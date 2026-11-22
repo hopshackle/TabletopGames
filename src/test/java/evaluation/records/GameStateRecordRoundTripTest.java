@@ -1,5 +1,7 @@
 package evaluation.records;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import core.AbstractForwardModel;
 import core.AbstractGameState;
 import core.AbstractGameStateRecord;
@@ -10,6 +12,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import players.simple.RandomPlayer;
+import utilities.Json;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -18,7 +21,8 @@ import static org.junit.Assert.*;
 
 /**
  * The completeness check for every game with a record: a state written as its record and read back equals the
- * original, offers the same actions, and, given the same random numbers, plays on identically.
+ * original, offers the same actions, and, given the same random numbers, plays on identically (compared by
+ * content, as components created during play get different IDs in the two games).
  */
 @RunWith(Parameterized.class)
 public class GameStateRecordRoundTripTest {
@@ -80,8 +84,21 @@ public class GameStateRecordRoundTripTest {
             AbstractAction chosen = actions.get(choice.nextInt(actions.size()));
             fm.next(original, chosen.copy());
             fm.next(restored, chosen.copy());
-            assertEquals(where + ", step " + step + ": fields differ " + differences(original, restored), original, restored);
+            // Components created during play (a new round's cards) draw different IDs in the two games, so from
+            // here the states are compared by content: their records, without component IDs
+            assertEquals(where + ", step " + step, withoutIds(original), withoutIds(restored));
         }
+    }
+
+    private static JsonNode withoutIds(AbstractGameState state) {
+        JsonNode json = Json.toTree(GameStateRecordFactory.createRecord(state));
+        removeIds(json);
+        return json;
+    }
+
+    private static void removeIds(JsonNode node) {
+        if (node instanceof ObjectNode object) object.remove("componentID");
+        node.forEach(GameStateRecordRoundTripTest::removeIds);
     }
 
     // AbstractGameState fields that equals() deliberately leaves out

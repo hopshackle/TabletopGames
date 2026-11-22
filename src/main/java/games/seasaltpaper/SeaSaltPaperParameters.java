@@ -169,16 +169,11 @@ public class SeaSaltPaperParameters extends TunableParameters {
         return p;
     }
 
+    // TunableParameters.equals compares the parameter values and then calls this
     @Override
     public boolean _equals(Object o) {
-        return equals(o);
-    }
-
-    @Override
-    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
         SeaSaltPaperParameters that = (SeaSaltPaperParameters) o;
         return numberOfCardsDraw == that.numberOfCardsDraw && numberOfCardsDiscard == that.numberOfCardsDiscard && individualVisibility == that.individualVisibility && discardPileCount == that.discardPileCount && Objects.equals(dataPath, that.dataPath) && Arrays.equals(victoryCondition, that.victoryCondition)
                 && Objects.equals(collectorBonusDict, that.collectorBonusDict) && Objects.equals(duoBonusDict, that.duoBonusDict) && Objects.equals(multiplierDict, that.multiplierDict) && Objects.equals(cardsInit, that.cardsInit);

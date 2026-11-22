@@ -2,6 +2,7 @@ package utilities;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class Pair<T,V> {
@@ -32,13 +33,14 @@ public class Pair<T,V> {
         if (this == o) return true;
         if (!(o instanceof Pair)) return false;
         Pair<?, ?> pair = (Pair<?, ?>) o;
-        return Objects.equals(a, pair.a) &&
-                Objects.equals(b, pair.b);
+        // deepEquals, so that a pair holding arrays compares them by content
+        return Objects.deepEquals(a, pair.a) &&
+                Objects.deepEquals(b, pair.b);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(a, b);
+        return Arrays.deepHashCode(new Object[]{a, b});
     }
 
     @Override
