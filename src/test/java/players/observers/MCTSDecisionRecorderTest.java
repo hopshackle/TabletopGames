@@ -122,7 +122,10 @@ public class MCTSDecisionRecorderTest {
 
         game.run();
 
-        assertNotNull("A JSON state file should exist", findFile(tempDir, ".json"));
+        Path states = findFile(tempDir, ".jsonl");
+        assertNotNull("The game's saved-states file should exist", states);
+        assertFalse("each recorded decision saves its state",
+                evaluation.records.SavedStates.entries(states.toFile()).isEmpty());
         assertNotNull("A PNG should exist (Connect4 has a GUI)", findFile(tempDir, ".png"));
         assertNotNull("An actions TSV should exist", findFile(tempDir, "_actions.tsv"));
         Path dot = findFile(tempDir, ".dot");
