@@ -93,6 +93,26 @@ public class StateRendererTest {
         org.junit.Assume.assumeTrue("Test state file " + XII_Sample_state + " not present", XII_Sample_state.exists());
     }
 
+    @Test
+    public void rendersAPositionFromAGamesSavedStates() throws Exception {
+        Path dir = Files.createTempDirectory("savedStates");
+        core.Game game = GameType.Connect4.createGameInstance(2, 8L);
+        game.reset(java.util.List.of(new players.simple.RandomPlayer(new java.util.Random(1)), new players.simple.RandomPlayer(new java.util.Random(2))));
+        evaluation.listeners.GameStateSnapshotter snapshotter = evaluation.listeners.GameStateSnapshotter.into(dir.toString());
+        core.AbstractGameState state = game.getGameState();
+        snapshotter.save(state, "TURN_OVER", 0);
+        int tick = state.getGameTick();
+        game.getForwardModel().next(state, game.getForwardModel().computeAvailableActions(state).get(0));
+        snapshotter.save(state, "TURN_OVER", 1);
+
+        File file = snapshotter.fileFor(state);
+        core.AbstractGameState first = evaluation.records.SavedStates.load(file, tick);
+        BufferedImage img = StateRenderer.renderToImage(GameType.Connect4, first, false);
+        assertTrue(img.getWidth() > 0 && img.getHeight() > 0);
+        assertTrue("Rendered board should not be a single flat colour", hasMultipleColours(img));
+        assertNotNull(StateRenderer.renderToImage(GameType.Connect4, file, false));
+    }
+
     private static boolean hasMultipleColours(BufferedImage img) {
         int first = img.getRGB(0, 0);
         for (int x = 0; x < img.getWidth(); x += 13)

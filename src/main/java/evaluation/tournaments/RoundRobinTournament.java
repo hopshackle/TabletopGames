@@ -1,6 +1,7 @@
 package evaluation.tournaments;
 
 import core.AbstractGameState;
+import evaluation.records.SavedStates;
 import core.AbstractParameters;
 import core.AbstractPlayer;
 import evaluation.RunArg;
@@ -344,7 +345,7 @@ public class RoundRobinTournament extends AbstractTournament {
 
             // if we are starting from a specific state, load it and reset the game
             if (!((String) config.getOrDefault(RunArg.gameState, "")).isEmpty()) {
-                AbstractGameState startState = JSONUtils.loadClassFromFile((String) config.get(RunArg.gameState));
+                AbstractGameState startState = SavedStates.load((String) config.get(RunArg.gameState));
                 game.reset(startState);
             }
 

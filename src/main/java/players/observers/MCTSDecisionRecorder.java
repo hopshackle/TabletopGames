@@ -32,11 +32,11 @@ import java.util.concurrent.TimeUnit;
  * of what the (MCTS) agent was thinking. It does <b>not</b> change the action taken (unlike
  * {@link GameAdviser}); it merely observes.
  * <p>
- * For each {@code ACTION_CHOSEN} event (skipping forced single-action decisions) it produces, in the
- * same {@code <savedStatesDir>/<GameType>/G<GameID>/} directory the {@link Game} uses for saved states:
+ * For each {@code ACTION_CHOSEN} event (skipping forced single-action decisions) it flags the chosen action
+ * with {@link AbstractAction#setSaveGame(boolean)}, so the {@link Game} itself saves the full game state as a line
+ * of {@code <savedStatesDir>/<GameType>/G<GameID>.jsonl} (see {@code evaluation.records.SavedStates}). It also
+ * produces, in the {@code <savedStatesDir>/<GameType>/G<GameID>/} directory:
  * <ul>
- *     <li>{@code P<playerID>_Tick<tick>.json} - the full game state, written by the {@code Game} itself
- *         (we simply flag the chosen action with {@link AbstractAction#setSaveGame(boolean)});</li>
  *     <li>{@code P<playerID>_Tick<tick>.png}  - a render of the live state (only if the game has a GUI),
  *         annotated below with the top 5 actions the agent considered;</li>
  *     <li>{@code P<playerID>_Tick<tick>_actions.tsv} - a tab-delimited table of every action available at

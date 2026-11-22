@@ -77,7 +77,8 @@ public enum RunArg {
             "\t Specifying all|-name1|-name2... will run all games except for name1, name2...",
             "all",
             new Usage[]{Usage.RunGames, Usage.ParameterSearch, Usage.ExpertIteration}),
-    gameState("A JSON file that defines the initial state of the game (if this is supported by the game).",
+    gameState("A saved game state to start every game from (if this is supported by the game): a .json file, " +
+            "or a game's .jsonl file, where path#tick picks the state at that tick (the last one by default).",
             "",
             new Usage[]{Usage.RunGames}),
     function("The name of the function to be used for the NTBEA process.",

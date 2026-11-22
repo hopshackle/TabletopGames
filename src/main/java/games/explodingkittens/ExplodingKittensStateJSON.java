@@ -11,7 +11,7 @@ import java.util.ArrayList;
 
 /**
  * Serialization of {@link ExplodingKittensGameState} to and from JSON, following the same pattern as
- * {@code games.backgammon.BGStateJSON} and {@code games.connect4.Connect4StateJSON}: the shared
+ * {@code games.backgammon.BGStateJSON}: the shared
  * AbstractGameState fields (parameters, game phase, turn counters and - crucially for this game - the
  * stack of in-progress {@link core.interfaces.IExtendedSequence}s) are handled by
  * {@link core.AbstractGameState#abstractGameStateToJSON()} /
