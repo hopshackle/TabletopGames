@@ -608,6 +608,16 @@ public class Wonder7Card extends Card {
         return new Wonder7Card(cardType, buildingType, constructionCost, resourcesProduced, prerequisiteCard, instantEffects, endGameEffects, componentID);
     }
 
+    /**
+     * The card as {@link #factory} builds it, with this card's component ID. Cards are written to JSON with their
+     * effects, but effects hold functions, which JSON cannot hold, so a card read back is rebuilt from its type.
+     */
+    public Wonder7Card rebuilt(Wonders7GameParameters params) {
+        Wonder7Card card = factory(cardType, params);
+        return new Wonder7Card(card.cardType, card.buildingType, card.constructionCost, card.resourcesProduced,
+                card.prerequisiteCard, card.instantEffects, card.endGameEffects, componentID);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof Wonder7Card card) {
