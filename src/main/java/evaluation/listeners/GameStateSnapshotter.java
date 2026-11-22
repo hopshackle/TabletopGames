@@ -17,8 +17,7 @@ import java.util.*;
 
 /**
  * Saves game states, one file per game: {@code <directory>/<GameType>/G<gameID>.jsonl}, one JSON line per state
- * (see {@link SavedStates.Entry}). The state is the true state, written as its record (or, for a game without one
- * yet, its {@code IToJSON} form).
+ * (see {@link SavedStates.Entry}). The state is the true state, written as its record.
  * <p>
  * It saves on two triggers, both into the same file:
  * <ul>
@@ -113,8 +112,7 @@ public class GameStateSnapshotter implements IGameListener {
         }
         if (!SavedStates.canSave(state)) {
             throw new IllegalStateException("GameStateSnapshotter cannot save " + state.getGameType()
-                    + ": no record is registered for it in " + GameStateRecordFactory.class.getSimpleName()
-                    + " and its state does not implement IToJSON.");
+                    + ": no record is registered for it in " + GameStateRecordFactory.class.getSimpleName() + ".");
         }
         ObjectNode line = Json.object();
         line.put("tick", state.getGameTick());

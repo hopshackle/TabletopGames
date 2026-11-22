@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import core.CoreConstants;
-import core.interfaces.IToJSON;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -13,7 +12,7 @@ import org.json.simple.parser.ParseException;
 
 import java.util.List;
 
-public class Token extends Component implements IToJSON {
+public class Token extends Component {
     protected String tokenType;
 
     @SuppressWarnings("unused") // for JSON
@@ -111,24 +110,4 @@ public class Token extends Component implements IToJSON {
         return tokenType;
     }
 
-    @Override
-    public JSONObject toJSON() {
-        JSONObject tJSON = new JSONObject();
-        tJSON.put("name", componentName);
-        tJSON.put("ownerId", ownerId);
-        tJSON.put("id", componentID);
-        tJSON.put("tokenType", tokenType);
-        return tJSON;
-    }
-
-    public static Token loadFromJSON(JSONObject tJSON) {
-        Token t;
-        if (tJSON.containsKey("id") && tJSON.get("id") instanceof Number) {
-            t = new Token("", ((Number) tJSON.get("id")).intValue());
-        } else {
-            t = new Token("");
-        }
-        t.loadToken(tJSON);
-        return t;
-    }
 }

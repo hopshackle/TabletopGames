@@ -3,11 +3,7 @@ package evaluation.records;
 import com.fasterxml.jackson.databind.JsonNode;
 import core.AbstractGameState;
 import core.AbstractGameStateRecord;
-import core.interfaces.IToJSON;
 import games.GameType;
-import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
-import utilities.JSONUtils;
 import utilities.Json;
 
 import java.io.File;
@@ -18,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Reads saved game states. A saved state is the JSON of a game state: its {@link AbstractGameStateRecord}, or,
- * for games that do not have a record yet, its {@link IToJSON} form. Either is identified by its {@code "class"}.
+ * Reads saved game states. A saved state is the JSON of a game state's {@link AbstractGameStateRecord}, identified by
+ * its {@code "class"}.
  * <p>
  * States are saved one game per file, as JSON Lines ({@code G<gameID>.jsonl}, written by
  * {@link evaluation.listeners.GameStateSnapshotter}): each line is an {@link Entry} with the tick, the player, what
@@ -49,53 +45,37 @@ public final class SavedStates {
         }
     }
 
-    /** True if the state can be saved: its game has a record, or the state implements {@link IToJSON}. */
+    /** True if the state can be saved: its game has a record. */
     public static boolean canSave(AbstractGameState state) {
-        return GameStateRecordFactory.hasRecord(state) || state instanceof IToJSON;
+        return GameStateRecordFactory.hasRecord(state);
     }
 
-    /** The state's JSON: its record if its game has one, otherwise its {@link IToJSON} form. */
+    /** The state's JSON: its record. */
     public static JsonNode toJson(AbstractGameState state) {
-        if (GameStateRecordFactory.hasRecord(state))
-            return Json.toTree(GameStateRecordFactory.createRecord(state));
-        if (state instanceof IToJSON json)
-            return Json.parse(json.toJSON().toJSONString());
-        throw new IllegalArgumentException("A " + state.getGameType() + " state cannot be saved: the game has "
-                + "no record in GameStateRecordFactory and its state does not implement IToJSON");
+        if (!canSave(state))
+            throw new IllegalArgumentException("A " + state.getGameType() + " state cannot be saved: the game has "
+                    + "no record in GameStateRecordFactory");
+        return Json.toTree(GameStateRecordFactory.createRecord(state));
     }
 
     /** The state that the JSON describes. */
     public static AbstractGameState toState(JsonNode json) {
-        Class<?> type = declaredClass(json);
-        if (AbstractGameStateRecord.class.isAssignableFrom(type))
-            return AbstractGameStateRecord.read(json.toString()).toState();
-        return JSONUtils.loadClassFromJSON((JSONObject) JSONValue.parse(json.toString()));
+        checkIsRecord(json);
+        return AbstractGameStateRecord.read(json.toString()).toState();
     }
 
-    /**
-     * The game the JSON is a state of. A record names its game. An {@link IToJSON} state is matched by its state
-     * class and, where several games share a state class (Backgammon and XII Scripta share {@code BGGameState}),
-     * by the class of its parameters.
-     */
+    /** The game the JSON is a state of, as its record names it. */
     public static GameType gameType(JsonNode json) {
-        Class<?> type = declaredClass(json);
-        if (AbstractGameStateRecord.class.isAssignableFrom(type))
-            return GameType.valueOf(json.get("gameType").asText());
-        String paramsClass = json.path("abstractGameState").path("gameParams").path("class").asText(null);
-        for (GameType gt : GameType.values()) {
-            if (gt.getGameStateClass() == type && (paramsClass == null
-                    || (gt.getParameterClass() != null && gt.getParameterClass().getName().equals(paramsClass))))
-                return gt;
-        }
-        throw new IllegalArgumentException("No game matches state class " + type.getName()
-                + (paramsClass == null ? "" : " with parameters " + paramsClass));
+        checkIsRecord(json);
+        return GameType.valueOf(json.get("gameType").asText());
     }
 
-    private static Class<?> declaredClass(JsonNode json) {
+    private static void checkIsRecord(JsonNode json) {
         String name = json.path("class").asText(null);
         if (name == null) throw new IllegalArgumentException("A saved state needs a \"class\"");
         try {
-            return Class.forName(name);
+            if (!AbstractGameStateRecord.class.isAssignableFrom(Class.forName(name)))
+                throw new IllegalArgumentException(name + " is not a game state record");
         } catch (ClassNotFoundException e) {
             throw new IllegalArgumentException("Unknown class " + name + " in saved state", e);
         }
@@ -114,8 +94,7 @@ public final class SavedStates {
                 }
             } else {
                 JsonNode state = Json.mapper().readTree(file);
-                int tick = state.has("tick") ? state.get("tick").asInt() : state.path("abstractGameState").path("gameTick").asInt();
-                entries.add(new Entry(tick, -1, null, state));
+                entries.add(new Entry(state.path("tick").asInt(), -1, null, state));
             }
             return entries;
         } catch (IOException e) {

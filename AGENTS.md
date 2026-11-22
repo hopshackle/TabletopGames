@@ -190,17 +190,19 @@ Two patterns are in use — pick the one that fits:
 
 ### Setting up game state from a saved JSON file
 
-For games that support JSON serialisation, load a saved state rather than simulating to reach a
-scenario — simulation can land on awkward mid-tick states (e.g. null dice rolls). Edit the JSON
-fields to vary conditions rather than forcing values via reflection:
+For games with a record (`evaluation.records.GameStateRecordFactory`), load a saved state rather than
+simulating to reach a scenario — simulation can land on awkward mid-tick states (e.g. null dice rolls).
+A saved state is the game's `AbstractGameStateRecord` as JSON; `GameStateSnapshotter` writes a game's states
+to `<GameType>/G<gameID>.jsonl`, and `SavedStates` reads a `.json` file or picks a state from a `.jsonl` file
+by tick. Edit the JSON fields to vary conditions rather than forcing values via reflection:
 
 ```java
-Game game = GameType.XIIScripta.createGameInstance(2);
-game.reset(List.of(new RandomPlayer(), new RandomPlayer()));
-BGGameState state = (BGGameState) game.getGameState();
-BGStateJSON.loadFromJSON(state, JSONUtils.loadJSONFile("P0_Tick340.json"));
+BGGameState state = (BGGameState) SavedStates.load(new File("src/test/resources/P1_Tick659.json"));
 // Edit e.g. "piecesBorneOff" : [4, 7] in the JSON to test bear-off logic
 ```
+
+A game's record must hold everything needed to restore its state: `GameStateRecordRoundTripTest` checks
+every game with a record.
 
 For GUI/board-view verification, paint the view to a `BufferedImage` and write a PNG:
 
