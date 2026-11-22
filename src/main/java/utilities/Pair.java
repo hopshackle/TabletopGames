@@ -1,5 +1,7 @@
 package utilities;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
 public class Pair<T,V> {
@@ -9,7 +11,8 @@ public class Pair<T,V> {
     public static <T,V> Pair<T,V> of(T a, V b) {
         return new Pair<>(a, b);
     }
-    public Pair(T a, V b) {
+    @JsonCreator
+    public Pair(@JsonProperty("a") T a, @JsonProperty("b") V b) {
         this.a = a;
         this.b = b;
     }

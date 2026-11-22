@@ -2,11 +2,11 @@ package players.jsonBagPlayers;
 
 import com.google.gson.Gson;
 import core.AbstractGameState;
-import core.AbstractGameStateContainer;
+import core.AbstractGameStateRecord;
 import core.AbstractPlayer;
 import core.Game;
 import core.actions.AbstractAction;
-import evaluation.containers.GameStateContainerFactory;
+import evaluation.records.GameStateRecordFactory;
 import games.GameType;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,9 +21,11 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.*;
 
 /**
- * JSON-Bag tokens must not depend on the JSON library. For each game with a container, a mid-game
- * container is serialised by Gson (the library the bags were built with) and by {@link Json}, in the
- * same process, and the two token maps must be identical. Comparing two serialisations of one object
+ * JSON-Bag tokens must not depend on the JSON library. For each game with a record, a mid-game
+ * record is serialised by Gson (the library the bags were built with) and by {@link Json}, in the
+ * same process, and the two token maps must be identical apart from the {@code "class"} type ids that
+ * {@link Json} adds to components, and the fields every record has that Gson cannot write as Jackson does
+ * (the parameters are a Jackson tree; the actions in progress carry type ids). Comparing two serialisations of one object
  * avoids cross-run noise: component IDs and some game content vary between separately launched JVMs.
  * <p>
  * This test is the one place Gson may still be imported (see {@code JsonLibraryRulesTest}).
@@ -38,7 +40,7 @@ public class TokenizerSerialiserEquivalenceTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> games() {
         return Arrays.stream(GameType.values())
-                .filter(GameStateContainerFactory::hasContainer)
+                .filter(GameStateRecordFactory::hasRecord)
                 .map(g -> new Object[]{g})
                 .toList();
     }
@@ -49,7 +51,7 @@ public class TokenizerSerialiserEquivalenceTest {
         this.gameType = gameType;
     }
 
-    private AbstractGameStateContainer midGameContainer() {
+    private AbstractGameStateRecord midGameRecord() {
         int nPlayers = Math.max(2, gameType.getMinPlayers());
         Game game = gameType.createGameInstance(nPlayers, 42L);
         List<AbstractPlayer> players = IntStream.range(0, nPlayers).mapToObj(i -> (AbstractPlayer) new RandomPlayer()).toList();
@@ -60,14 +62,14 @@ public class TokenizerSerialiserEquivalenceTest {
             List<AbstractAction> actions = game.getForwardModel().computeAvailableActions(state);
             game.getForwardModel().next(state, actions.get(rnd.nextInt(actions.size())));
         }
-        return GameStateContainerFactory.createContainer(state);
+        return GameStateRecordFactory.createRecord(state);
     }
 
     @Test
     public void gsonAndJacksonGiveIdenticalTokens() throws Exception {
-        AbstractGameStateContainer container = midGameContainer();
-        Map<String, Integer> viaGson = Tokenizer.tokenize(new Gson().toJson(container));
-        Map<String, Integer> viaJackson = Tokenizer.tokenize(Json.mapper().writeValueAsString(container));
+        AbstractGameStateRecord record = midGameRecord();
+        Map<String, Integer> viaGson = withoutTypeIds(Tokenizer.tokenize(new Gson().toJson(record)));
+        Map<String, Integer> viaJackson = withoutTypeIds(Tokenizer.tokenize(Json.mapper().writeValueAsString(record)));
         assertFalse(viaGson.isEmpty());
 
         Set<String> onlyGson = new TreeSet<>(viaGson.keySet());
@@ -81,17 +83,29 @@ public class TokenizerSerialiserEquivalenceTest {
 
     @Test
     public void objectAndStringEntryPointsAgree() throws Exception {
-        AbstractGameStateContainer container = midGameContainer();
-        assertEquals(Tokenizer.tokenize(Json.mapper().writeValueAsString(container), "", true, "both", true,
+        AbstractGameStateRecord record = midGameRecord();
+        assertEquals(Tokenizer.tokenize(Json.mapper().writeValueAsString(record), "", true, "both", true,
                         false, false, false, null, false),
-                Tokenizer.tokenize(container));
+                Tokenizer.tokenize(record));
     }
 
     @Test
     public void noIdentityTokens() {
-        Map<String, Integer> bag = Tokenizer.tokenize(midGameContainer());
+        Map<String, Integer> bag = Tokenizer.tokenize(midGameRecord());
         List<String> identity = bag.keySet().stream().filter(t -> IDENTITY_TOKEN.matcher(t).find()).sorted().toList();
         assertTrue("identity tokens: " + first(identity), identity.isEmpty());
+    }
+
+    private static final Set<String> RECORD_ONLY_FIELDS = Set.of("gameParameters", "actionsInProgress");
+
+    /** The tokens that come neither from a {@code "class"} type id nor from {@link #RECORD_ONLY_FIELDS}. */
+    static Map<String, Integer> withoutTypeIds(Map<String, Integer> bag) {
+        Map<String, Integer> result = new HashMap<>(bag);
+        result.keySet().removeIf(t -> {
+            List<String> segments = Arrays.asList(t.split("[.\\[\\]]"));
+            return segments.contains("class") || (segments.size() > 1 && RECORD_ONLY_FIELDS.contains(segments.get(1)));
+        });
+        return result;
     }
 
     private static String first(Collection<String> tokens) {

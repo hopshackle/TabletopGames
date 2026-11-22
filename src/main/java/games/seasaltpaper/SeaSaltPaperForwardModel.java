@@ -261,11 +261,11 @@ public class SeaSaltPaperForwardModel extends StandardForwardModel {
 
     private void gameStateToJson(SeaSaltPaperGameState gs) {
         SeaSaltPaperParameters params = (SeaSaltPaperParameters) gs.getGameParameters();
-        SSPGameStateContainer gsContainer = new SSPGameStateContainer(gs);
+        SSPGameStateRecord gsRecord = new SSPGameStateRecord(gs);
         String fileName = "ssp-" + gs.getGameID() + "-" + gs.getRoundCounter() + "-" + gs.getTurnCounter() + ".json";
         String fileDir = params.dataPath + "/gameStates/";
         try (FileWriter f = new FileWriter(fileDir + fileName)) {
-            Json.prettyWriter().writeValue(f, gsContainer);
+            Json.prettyWriter().writeValue(f, gsRecord);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

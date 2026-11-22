@@ -5,6 +5,10 @@ public class PropertyInt extends Property
 {
     public int value;
 
+    @SuppressWarnings("unused") // for JSON
+    private PropertyInt() {
+    }
+
     public PropertyInt(String hashString, int value)
     {
         super(hashString);

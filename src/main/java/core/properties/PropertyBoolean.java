@@ -5,6 +5,10 @@ public class PropertyBoolean extends Property
 {
     public Boolean value;
 
+    @SuppressWarnings("unused") // for JSON
+    private PropertyBoolean() {
+    }
+
     public PropertyBoolean(boolean value)
     {
         super("");

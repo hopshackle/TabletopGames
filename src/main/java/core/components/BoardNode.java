@@ -1,5 +1,6 @@
 package core.components;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import core.CoreConstants;
 import core.properties.Property;
 import org.json.simple.JSONArray;
@@ -12,7 +13,10 @@ import java.util.LinkedHashMap;
 public class BoardNode extends Component {
 
     final static double defaultCost = 1.0;
+    // Board topology comes from setup, not from a saved state, so it is not written to JSON
+    @JsonIgnore
     private Map<BoardNode, Double> neighbours;  // Neighbours of this board node, <component IDs, cost to traverse>
+    @JsonIgnore
     private Map<BoardNode, Integer> neighbourSideMapping;  // Neighbours mapping to a side of this board node, component ID -> side idx
     private int maxNeighbours;  // Maximum number of neighbours for this board node
 

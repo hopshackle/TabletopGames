@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import core.AbstractGameState;
-import core.AbstractGameStateContainer;
-import evaluation.containers.GameStateContainerFactory;
+import core.AbstractGameStateRecord;
+import evaluation.records.GameStateRecordFactory;
 import org.apache.commons.lang3.NotImplementedException;
 import utilities.Json;
 
@@ -19,11 +19,12 @@ public class Tokenizer {
 
     /**
      * Keys whose values identify an object rather than describe it: component IDs, which come from a counter
-     * shared by every game in the JVM, the owner ID that travels with them, and Jackson object-identity ids.
+     * shared by every game in the JVM, the owner ID that travels with them, the game's own ID, and Jackson
+     * object-identity ids.
      * They are never tokenized, wherever they appear, since a bag pooled over many games would otherwise
      * be dominated by IDs that no other game shares.
      */
-    public static final Set<String> IDENTITY_KEYS = Set.of("componentID", "ownerId", "@id");
+    public static final Set<String> IDENTITY_KEYS = Set.of("componentID", "ownerId", "gameID", "@id");
 
     /** True if the token has an identity key as one of its path segments. */
     public static boolean isIdentityToken(String token) {
@@ -66,12 +67,12 @@ public class Tokenizer {
     }
 
     public static Map<String, Integer> tokenize(AbstractGameState gs) {
-        AbstractGameStateContainer gsContainer = GameStateContainerFactory.createContainer(gs);
-        return Tokenizer.tokenize(gsContainer);
+        AbstractGameStateRecord gsRecord = GameStateRecordFactory.createRecord(gs);
+        return Tokenizer.tokenize(gsRecord);
     }
     public static Map<String, Integer> tokenize(AbstractGameState gs, Set<String> filterSet, boolean whitelist) {
-        AbstractGameStateContainer gsContainer = GameStateContainerFactory.createContainer(gs);
-        return Tokenizer.tokenize(gsContainer, filterSet, whitelist);
+        AbstractGameStateRecord gsRecord = GameStateRecordFactory.createRecord(gs);
+        return Tokenizer.tokenize(gsRecord, filterSet, whitelist);
     }
 
     /**

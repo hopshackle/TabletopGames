@@ -5,6 +5,10 @@ public class PropertyString extends Property
 {
     public String value;
 
+    @SuppressWarnings("unused") // for JSON
+    private PropertyString() {
+    }
+
     public PropertyString (String value)
     {
         super("");

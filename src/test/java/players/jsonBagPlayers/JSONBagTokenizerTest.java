@@ -188,13 +188,13 @@ public class JSONBagTokenizerTest {
     }
 
     @Test
-    public void gameStateIsTokenizedThroughItsContainer() {
-        // exercises GameStateContainerFactory + serialisation of the container's fields
+    public void gameStateIsTokenizedThroughItsRecord() {
+        // exercises GameStateRecordFactory + serialisation of the record's fields
         AbstractGameState gs = GameType.DotsAndBoxes.createGameInstance(2, 1234L).getGameState();
         Map<String, Integer> bag = Tokenizer.tokenize(gs);
 
         assertFalse("a game state must produce tokens", bag.isEmpty());
-        assertTrue("container fields must be serialised", bag.keySet().stream().anyMatch(k -> k.contains("gameType")));
+        assertTrue("record fields must be serialised", bag.keySet().stream().anyMatch(k -> k.contains("gameType")));
     }
 
     @Test

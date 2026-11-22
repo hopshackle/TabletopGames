@@ -37,7 +37,7 @@ public class SaveStateListenerTest {
     }
 
     @Test
-    public void writesAContainerSnapshotForAConfiguredEvent() throws Exception {
+    public void writesARecordSnapshotForAConfiguredEvent() throws Exception {
         SaveStateListener listener = new SaveStateListener();
         assertTrue(listener.setOutputDirectory(tmp.getRoot().getAbsolutePath()));
 
@@ -85,7 +85,7 @@ public class SaveStateListenerTest {
     }
 
     @Test
-    public void refusesAGameWithNoContainer() {
+    public void refusesAGameWithNoRecord() {
         GameType gt = GameType.TicTacToe;
         Game game = gt.createGameInstance(2, 7L);
         game.reset(List.of(new players.simple.RandomPlayer(), new players.simple.RandomPlayer()));
@@ -94,10 +94,10 @@ public class SaveStateListenerTest {
 
         try {
             listener.onEvent(Event.createEvent(Event.GameEvent.TURN_OVER, game.getGameState()));
-            fail("expected IllegalStateException for a game without a container");
+            fail("expected IllegalStateException for a game without a record");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().contains("TicTacToe"));
-            assertTrue(expected.getMessage().contains("GameStateContainerFactory"));
+            assertTrue(expected.getMessage().contains("GameStateRecordFactory"));
         }
     }
 

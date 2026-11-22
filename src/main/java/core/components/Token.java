@@ -16,6 +16,11 @@ import java.util.List;
 public class Token extends Component implements IToJSON {
     protected String tokenType;
 
+    @SuppressWarnings("unused") // for JSON
+    protected Token() {
+        super();
+    }
+
     public Token(String name){
         super(CoreConstants.ComponentType.TOKEN, name);
         this.tokenType = name;

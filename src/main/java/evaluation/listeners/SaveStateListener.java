@@ -1,9 +1,9 @@
 package evaluation.listeners;
 
 import core.AbstractGameState;
-import core.AbstractGameStateContainer;
+import core.AbstractGameStateRecord;
 import core.Game;
-import evaluation.containers.GameStateContainerFactory;
+import evaluation.records.GameStateRecordFactory;
 import evaluation.metrics.Event;
 import core.interfaces.IGameEvent;
 import utilities.Json;
@@ -18,7 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Writes a JSON snapshot of the game state at chosen events, using the same {@link AbstractGameStateContainer}
+ * Writes a JSON snapshot of the game state at chosen events, using the same {@link AbstractGameStateRecord}
  * form that JSON-Bag tokenises.
  * <p>
  * The directory comes from {@link #setOutputDirectory(String...)}, which the runners ({@code RunGames},
@@ -40,8 +40,8 @@ import java.util.Set;
  * { "class": "evaluation.listeners.SaveStateListener", "args": [ ["ROUND_OVER", "TURN_OVER"] ] }
  * }</pre>
  *
- * {@code GAME_OVER} is always included. A game with no container registered in
- * {@link GameStateContainerFactory} fails on the first event with a message naming the game, rather than
+ * {@code GAME_OVER} is always included. A game with no record registered in
+ * {@link GameStateRecordFactory} fails on the first event with a message naming the game, rather than
  * silently writing nothing.
  */
 public class SaveStateListener implements IGameListener {
@@ -104,17 +104,17 @@ public class SaveStateListener implements IGameListener {
             throw new IllegalStateException("SaveStateListener has no output directory. Run it through "
                     + "RunGames (which sets one from destDir), or call setOutputDirectory on it first.");
         }
-        if (!GameStateContainerFactory.hasContainer(state)) {
+        if (!GameStateRecordFactory.hasRecord(state)) {
             throw new IllegalStateException("SaveStateListener cannot save " + state.getGameType()
-                    + ": no AbstractGameStateContainer is registered for it in GameStateContainerFactory.");
+                    + ": no AbstractGameStateRecord is registered for it in GameStateRecordFactory.");
         }
 
-        AbstractGameStateContainer container = GameStateContainerFactory.createContainer(state);
+        AbstractGameStateRecord record = GameStateRecordFactory.createRecord(state);
         String fileName = state.getGameType().name() + "-" + state.getGameID() + "-"
                 + state.getRoundCounter() + "-" + state.getTurnCounter() + ".json";
         File target = new File(outputDir, fileName);
         try (FileWriter writer = new FileWriter(target)) {
-            Json.prettyWriter().writeValue(writer, container);
+            Json.prettyWriter().writeValue(writer, record);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write game state to " + target, e);
         }

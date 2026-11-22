@@ -52,7 +52,7 @@ public class JsonLibraryRulesTest {
 
     @Test
     public void noObjectMapperIsCreatedOutsideJson() throws IOException {
-        List<String> found = offenders(Pattern.compile("new\\s+([\\w.]+\\.)?ObjectMapper\\s*\\("), NEW_MAPPER_ALLOWED);
+        List<String> found = offenders(Pattern.compile("new\\s+([\\w.]+\\.)?ObjectMapper\\s*\\(|JsonMapper\\s*\\.\\s*builder\\s*\\("), NEW_MAPPER_ALLOWED);
         assertTrue("Use utilities.Json.mapper() instead of new ObjectMapper() in: " + found, found.isEmpty());
     }
 }

@@ -1,7 +1,7 @@
 package games.catan;
 
 import core.AbstractGameState;
-import core.AbstractGameStateContainer;
+import core.AbstractGameStateRecord;
 import core.actions.AbstractAction;
 import core.components.Counter;
 import core.components.Deck;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-public class CatanGameStateContainer extends AbstractGameStateContainer {
+public class CatanGameStateRecord extends AbstractGameStateRecord {
     protected int[] scores; // score for each player
     protected int[] victoryPoints; // secret points from victory cards
     protected int[] knights, roadLengths; // knight count and road length for each player
@@ -30,7 +30,7 @@ public class CatanGameStateContainer extends AbstractGameStateContainer {
 
     AbstractAction tradeOffer;
 //    public int nTradesThisTurn;
-    public CatanGameStateContainer(CatanGameState gs) {
+    public CatanGameStateRecord(CatanGameState gs) {
         super(gs);
         scores = gs.scores; // score for each player
         victoryPoints = gs.victoryPoints; // secret points from victory cards
