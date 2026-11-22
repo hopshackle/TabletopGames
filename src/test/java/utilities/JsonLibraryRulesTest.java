@@ -51,6 +51,15 @@ public class JsonLibraryRulesTest {
     }
 
     @Test
+    public void gameStatesAreSavedAsRecordsNotIToJSON() throws IOException {
+        List<String> found = new java.util.ArrayList<>();
+        Pattern state = Pattern.compile("extends\\s+([\\w.]+\\.)?AbstractGameState\\b[^{]*\\bIToJSON\\b");
+        for (Path p : sources())
+            if (state.matcher(Files.readString(p)).find()) found.add(p.toString().replace('\\', '/'));
+        assertTrue("Give these game states an AbstractGameStateRecord instead of IToJSON: " + found, found.isEmpty());
+    }
+
+    @Test
     public void noObjectMapperIsCreatedOutsideJson() throws IOException {
         List<String> found = offenders(Pattern.compile("new\\s+([\\w.]+\\.)?ObjectMapper\\s*\\(|JsonMapper\\s*\\.\\s*builder\\s*\\("), NEW_MAPPER_ALLOWED);
         assertTrue("Use utilities.Json.mapper() instead of new ObjectMapper() in: " + found, found.isEmpty());

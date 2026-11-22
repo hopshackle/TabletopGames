@@ -165,6 +165,22 @@ public class JsonTest {
         }
     }
 
+    static class NoDefaultConstructor {
+        final int value;
+        transient List<Integer> cache = new ArrayList<>();
+
+        NoDefaultConstructor(int value) {
+            this.value = value;
+        }
+    }
+
+    @Test
+    public void aClassWithoutAUsableConstructorIsAllocatedAndFilledFromItsFields() throws Exception {
+        NoDefaultConstructor back = Json.mapper().readValue("{\"value\":7}", NoDefaultConstructor.class);
+        assertEquals(7, back.value);
+        assertNull("no constructor or initialiser runs", back.cache);
+    }
+
     @Test
     public void emptyObjectsSerialise() throws Exception {
         assertEquals("{}", Json.mapper().writeValueAsString(new Object()));

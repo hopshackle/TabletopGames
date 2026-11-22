@@ -18,18 +18,26 @@ import java.util.*;
 public class Tokenizer {
 
     /**
-     * Keys whose values identify an object rather than describe it: component IDs, which come from a counter
-     * shared by every game in the JVM, the owner ID that travels with them, the game's own ID, and Jackson
-     * object-identity ids.
-     * They are never tokenized, wherever they appear, since a bag pooled over many games would otherwise
-     * be dominated by IDs that no other game shares.
+     * Keys whose values identify an object rather than describe it, besides those that {@link #isIdentityKey} finds
+     * by name: the owner ID that travels with a component ID, and Jackson object-identity ids.
      */
-    public static final Set<String> IDENTITY_KEYS = Set.of("componentID", "ownerId", "gameID", "@id");
+    public static final Set<String> IDENTITY_KEYS = Set.of("ownerId", "@id");
+
+    /**
+     * True for a key whose value identifies an object rather than describes it: a key in {@link #IDENTITY_KEYS}, or
+     * one ending in {@code ID} or {@code IDs}, the convention for fields holding component IDs ({@code componentID},
+     * {@code cardID}, {@code edgeIDs}) and the game's own {@code gameID}. Component IDs come from a counter shared by
+     * every game in the JVM, so they are never tokenized, wherever they appear: a bag pooled over many games would
+     * otherwise be dominated by IDs that no other game shares.
+     */
+    public static boolean isIdentityKey(String key) {
+        return IDENTITY_KEYS.contains(key) || key.endsWith("ID") || key.endsWith("IDs");
+    }
 
     /** True if the token has an identity key as one of its path segments. */
     public static boolean isIdentityToken(String token) {
         for (String segment : token.split("[.\\[\\]]")) {
-            if (IDENTITY_KEYS.contains(segment)) return true;
+            if (isIdentityKey(segment)) return true;
         }
         return false;
     }
@@ -64,6 +72,20 @@ public class Tokenizer {
      */
     public static Map<String, Integer> tokenize(Object obj, Set<String> filterSet, boolean whitelist) {
         return tokenize(obj, "", true, "both", true, false, false, false, filterSet, whitelist);
+    }
+
+    /**
+     * Tokenizes an object after the structuring pass ({@link JsonStructurer}), with the defaults of
+     * {@link #tokenize(Object)}: tokens name what a component is and who owns it rather than where it is kept.
+     */
+    public static Map<String, Integer> tokenizeStructured(Object obj, Set<String> filterSet, boolean whitelist) {
+        JsonNode tree = obj instanceof JsonNode node ? node : Json.toTree(obj);
+        return tokenize(JsonStructurer.structure(tree), "", true, "both", true, false, false, false, filterSet, whitelist);
+    }
+
+    /** Tokenizes a game state through its record after the structuring pass; see {@link JsonStructurer}. */
+    public static Map<String, Integer> tokenizeStructured(AbstractGameState gs, Set<String> filterSet, boolean whitelist) {
+        return tokenizeStructured(GameStateRecordFactory.createRecord(gs), filterSet, whitelist);
     }
 
     public static Map<String, Integer> tokenize(AbstractGameState gs) {
@@ -199,7 +221,7 @@ public class Tokenizer {
             int pairX = -99, pairY = -99;
             for (Map.Entry<String, JsonNode> e : collection.properties()) {
                 String key = e.getKey();
-                if (IDENTITY_KEYS.contains(key)) continue;
+                if (isIdentityKey(key)) continue;
                 String keyPrefix = prefix + "." + key;
                 JsonNode value = e.getValue();
                 if (isAtomic(value)) {
@@ -354,7 +376,7 @@ public class Tokenizer {
         List<String> identity = tokens.stream().filter(Tokenizer::isIdentityToken).limit(5).toList();
         if (!identity.isEmpty())
             throw new IllegalArgumentException(filePath + " contains identity tokens such as " + identity
-                    + "; regenerate it from bags that exclude " + IDENTITY_KEYS);
+                    + "; regenerate it from bags that exclude component IDs");
     }
 
     /**

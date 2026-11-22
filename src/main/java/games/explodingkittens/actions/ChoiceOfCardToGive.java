@@ -3,14 +3,12 @@ package games.explodingkittens.actions;
 import core.AbstractGameState;
 import core.actions.AbstractAction;
 import core.interfaces.IExtendedSequence;
-import core.interfaces.IToJSON;
 import games.explodingkittens.ExplodingKittensGameState;
-import org.json.simple.JSONObject;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ChoiceOfCardToGive implements IExtendedSequence, IToJSON {
+public class ChoiceOfCardToGive implements IExtendedSequence {
 
     public final int giver;
     public final int recipient;
@@ -19,22 +17,6 @@ public class ChoiceOfCardToGive implements IExtendedSequence, IToJSON {
     public ChoiceOfCardToGive(int giver, int recipient) {
         this.giver = giver;
         this.recipient = recipient;
-    }
-
-    public ChoiceOfCardToGive(JSONObject json) {
-        this(((Number) json.get("giver")).intValue(), ((Number) json.get("recipient")).intValue());
-        this.executed = (boolean) json.get("executed");
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public JSONObject toJSON() {
-        JSONObject json = new JSONObject();
-        json.put("class", getClass().getName());
-        json.put("giver", giver);
-        json.put("recipient", recipient);
-        json.put("executed", executed);
-        return json;
     }
 
     @Override

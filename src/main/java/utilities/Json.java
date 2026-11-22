@@ -51,7 +51,10 @@ import java.util.function.Supplier;
  * Reading fills a {@code HashSet} or {@code HashMap} field with a {@code LinkedHashSet} or {@code LinkedHashMap},
  * so that iterating over what was read (enum keys, say) does not change from one JVM launch to the next.
  * Reading ignores unknown properties and rejects text after the first JSON value; records and
- * {@code @JsonCreator} constructors work as usual. Where a class declares a {@code "class"} type id and a
+ * {@code @JsonCreator} constructors work as usual. A TAG class with neither a no-argument constructor nor a
+ * {@code @JsonCreator} is allocated without running a constructor, as Gson did, and its fields are set from the
+ * document: fields the document does not hold, {@code transient} ones included, keep Java's defaults ({@code 0},
+ * {@code null}), not their initialisers. Where a class declares a {@code "class"} type id and a
  * document has none, the declared type is used.
  * <p>
  * {@link #stateReader(Map)} reads game states: a component that appears in several places in the document
@@ -96,6 +99,12 @@ public final class Json {
             public BeanDeserializerBuilder updateBuilder(DeserializationConfig config, BeanDescription beanDesc,
                                                          BeanDeserializerBuilder builder) {
                 checkNoShadowedFields(beanDesc.getBeanClass());
+                ValueInstantiator instantiator = builder.getValueInstantiator();
+                Class<?> type = beanDesc.getBeanClass();
+                if (instantiator != null && !instantiator.canCreateUsingDefault()
+                        && !instantiator.canCreateFromObjectWith() && !instantiator.canCreateUsingDelegate()
+                        && isAllocatable(type))
+                    builder.setValueInstantiator(new AllocatingInstantiator(instantiator, type));
                 return builder;
             }
 
@@ -148,6 +157,62 @@ public final class Json {
                 if (other != null)
                     throw new IllegalArgumentException(type.getName() + " declares multiple JSON fields named "
                             + f.getName() + " (in " + other.getName() + " and " + c.getName() + ")");
+            }
+        }
+    }
+
+    private static boolean isAllocatable(Class<?> type) {
+        String name = type.getName();
+        return !type.isInterface() && !java.lang.reflect.Modifier.isAbstract(type.getModifiers()) && !type.isArray()
+                && !type.isPrimitive() && !type.isEnum() && !type.isRecord()
+                && !name.startsWith("java.") && !name.startsWith("javax.") && !name.startsWith("jdk.")
+                && !name.startsWith("sun.") && !name.startsWith("com.fasterxml.");
+    }
+
+    private static final Object UNSAFE;
+    private static final java.lang.reflect.Method ALLOCATE_INSTANCE;
+
+    static {
+        Object unsafe = null;
+        java.lang.reflect.Method allocate = null;
+        try {
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            unsafe = theUnsafe.get(null);
+            allocate = unsafeClass.getMethod("allocateInstance", Class.class);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            // no allocation without constructors: such classes then fail to read, naming the class
+        }
+        UNSAFE = unsafe;
+        ALLOCATE_INSTANCE = allocate;
+    }
+
+    /** Creates instances of a class that has no constructor Jackson can use, without running a constructor. */
+    private static class AllocatingInstantiator extends ValueInstantiator.Delegating {
+        private final Class<?> type;
+
+        AllocatingInstantiator(ValueInstantiator delegate, Class<?> type) {
+            super(delegate);
+            this.type = type;
+        }
+
+        @Override
+        public boolean canInstantiate() {
+            return ALLOCATE_INSTANCE != null || super.canInstantiate();
+        }
+
+        @Override
+        public boolean canCreateUsingDefault() {
+            return ALLOCATE_INSTANCE != null;
+        }
+
+        @Override
+        public Object createUsingDefault(DeserializationContext ctxt) throws IOException {
+            try {
+                return ALLOCATE_INSTANCE.invoke(UNSAFE, type);
+            } catch (ReflectiveOperationException e) {
+                return ctxt.handleMissingInstantiator(type, this, null, "cannot allocate " + type.getName());
             }
         }
     }

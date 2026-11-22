@@ -33,6 +33,8 @@ public class JSONBagValueFunctionExperiments {
         int nPlayers = Utils.getArg(args, "nPlayers", 4);
         int topKFeatures = Utils.getArg(args, "topK", 500);
         boolean includeNone = Utils.getArg(args, "includeNone", false);
+        // tokenize states after the structuring pass (JsonStructurer); the prototypes must have been built the same way
+        boolean structured = Utils.getArg(args, "structured", false);
         String defaultExperimentRootPath = "Experiments/valueFuncTest2/" + gameName;
         String experimentRootPath = Utils.getArg(args, "experimentRootPath", defaultExperimentRootPath);
 
@@ -55,6 +57,7 @@ public class JSONBagValueFunctionExperiments {
             + ", nPlayers=" + nPlayers
             + ", topKFeatures=" + topKFeatures
             + ", includeNone=" + includeNone
+            + ", structured=" + structured
             + ", experimentRootPath=" + experimentRootPath);
 
         int nPrototypes = nPlayers;
@@ -117,6 +120,7 @@ public class JSONBagValueFunctionExperiments {
                     }
 
                     JSONBagOSLAPlayer jsonBagOSLAPlayer = new JSONBagOSLAPlayer(fullPrototypes, topFeaturesFilterList);
+                    jsonBagOSLAPlayer.setStructured(structured);
                     if (gameTypeTest == GameType.Wonders7) {
                         jsonBagOSLAPlayer.setSimultaneousMode(true);
                     }
@@ -137,7 +141,7 @@ public class JSONBagValueFunctionExperiments {
                     long experimentStart = System.currentTimeMillis();
                     TAGNumericStatSummary[] stats = MultiGameRunner.runMany(Collections.singletonList(gameTypeTest), players, n, seeds, null, false, null, 0);
                     double experimentDurationSeconds = (System.currentTimeMillis() - experimentStart) / 1000.0;
-                    appendCsvRows(csvOutputPath, gameTypeTest, prototypesFolderName, topFeaturesFolderName, topKFeatures, jsonBagOSLAPlayerIndex, stats, experimentDurationSeconds);
+                    appendCsvRows(csvOutputPath, gameTypeTest, prototypesFolderName, topFeaturesFolderName, topKFeatures, jsonBagOSLAPlayerIndex, stats, experimentDurationSeconds, structured);
                 }
             }
         }
@@ -205,7 +209,7 @@ public class JSONBagValueFunctionExperiments {
     }
 
     private static void initialiseCsv(String csvOutputPath) {
-        String header = "game,prototypeFolder,topFeaturesFolder,topKFeatures,jsonBagOSLAPlayerIndex,n,mean,sd,min,max,experimentDurationSeconds\n";
+        String header = "game,prototypeFolder,topFeaturesFolder,topKFeatures,jsonBagOSLAPlayerIndex,n,mean,sd,min,max,experimentDurationSeconds,structured\n";
         try {
             Files.writeString(Path.of(csvOutputPath), header);
         } catch (IOException e) {
@@ -220,7 +224,8 @@ public class JSONBagValueFunctionExperiments {
                                           int topKFeatures,
                           int jsonBagOSLAPlayerIndex,
                           TAGNumericStatSummary[] stats,
-                          double experimentDurationSeconds) {
+                          double experimentDurationSeconds,
+                          boolean structured) {
         StringBuilder sb = new StringBuilder();
         TAGNumericStatSummary s = stats[jsonBagOSLAPlayerIndex];
         sb.append(gameType.name()).append(',')
@@ -233,7 +238,8 @@ public class JSONBagValueFunctionExperiments {
                 .append(s.sd()).append(',')
                 .append(s.min()).append(',')
                 .append(s.max()).append(',')
-                .append(experimentDurationSeconds)
+                .append(experimentDurationSeconds).append(',')
+                .append(structured)
                 .append('\n');
 
         try {

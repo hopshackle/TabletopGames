@@ -9,27 +9,28 @@ import games.backgammon.BGForwardModel;
 import games.backgammon.BGGameState;
 import games.backgammon.BGParameters;
 import gui.Frontend.LoadedGameState;
-import org.json.simple.JSONObject;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import evaluation.records.SavedStates;
 import org.junit.Test;
-import utilities.JSONUtils;
+import utilities.Json;
 
 import java.io.File;
+import java.nio.file.Files;
 
 import static org.junit.Assert.*;
 
 /**
  * Tests for {@link Frontend#loadGameStateFromFile(File)}, the logic behind the GUI's
- * "Load game state" file chooser. Each test round-trips a state through {@code toJSON},
+ * "Load game state" file chooser. Each test round-trips a state through its record,
  * writes it to a temporary file, and reloads it - self-contained, so no external fixtures
  * are required.
  */
 public class FrontendLoadStateTest {
 
     private File writeStateToTempFile(AbstractGameState state) throws Exception {
-        JSONObject json = ((core.interfaces.IToJSON) state).toJSON();
         File file = File.createTempFile("tagState", ".json");
         file.deleteOnExit();
-        JSONUtils.writeJSON(json, file.getPath());
+        Files.writeString(file.toPath(), Json.prettyWriter().writeValueAsString(SavedStates.toJson(state)));
         return file;
     }
 
@@ -90,11 +91,11 @@ public class FrontendLoadStateTest {
     public void rejectsUnknownGameClass() throws Exception {
         BGGameState state = new BGGameState(new BGParameters(), 2);
         new BGForwardModel().setup(state);
-        JSONObject json = state.toJSON();
+        ObjectNode json = (ObjectNode) SavedStates.toJson(state);
         json.put("class", "games.nonexistent.NoSuchGameState");
         File file = File.createTempFile("tagBadState", ".json");
         file.deleteOnExit();
-        JSONUtils.writeJSON(json, file.getPath());
+        Files.writeString(file.toPath(), json.toString());
 
         Frontend.loadGameStateFromFile(file);
     }

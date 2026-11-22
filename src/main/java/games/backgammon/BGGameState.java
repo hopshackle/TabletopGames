@@ -4,15 +4,12 @@ import com.github.javaparser.javadoc.description.JavadocSnippet;
 import core.AbstractGameState;
 import core.AbstractParameters;
 import core.components.*;
-import core.interfaces.IToJSON;
-import evaluation.optimisation.TunableParameters;
 import games.GameType;
 import games.XIIScripta.XIIParameters;
-import org.json.simple.JSONObject;
 
 import java.util.*;
 
-public class BGGameState extends AbstractGameState implements IToJSON {
+public class BGGameState extends AbstractGameState {
 
 //    Backgammon involves moving 15 checkers around a board, aiming to be the first to "bear off" (remove) all your pieces before your opponent. Players move their pieces based on dice rolls, and a key strategy involves hitting opponent's pieces (blots) to send them to the bar, forcing them to re-enter the game.
 //    Here's a more detailed breakdown of the rules:
@@ -57,28 +54,6 @@ public class BGGameState extends AbstractGameState implements IToJSON {
 
     public BGGameState(AbstractParameters gameParameters, int nPlayers) {
         super(gameParameters, nPlayers);
-    }
-
-    public BGGameState(JSONObject jsonObject) {
-        this(new BGParameters(),
-                ((Number) (((JSONObject) jsonObject.get("abstractGameState")).get("nPlayers"))).intValue());
-        // Now we want to update the parameters based on the contents of the JSON object
-        // We have to do this after the super constructor, because the super constructor will have initialised the gameParameters to a default value
-        // and we can't put this code earlier before Java 25
-        JSONObject abstractGameStateJSON = (JSONObject) jsonObject.get("abstractGameState");
-        JSONObject gameParamsJSON = (JSONObject) abstractGameStateJSON.get("gameParams");
-        String paramsClassName = (String) gameParamsJSON.get("class");
-        if (paramsClassName.equals("games.backgammon.BGParameters")) {
-            this.gameParameters = TunableParameters.loadFromJSON(new BGParameters(), gameParamsJSON);
-        } else if (paramsClassName.equals("games.XIIScripta.XIIParameters")) {
-            this.gameParameters = TunableParameters.loadFromJSON(new XIIParameters(), gameParamsJSON);
-        } else {
-            throw new IllegalArgumentException("Unknown parameters class: " + paramsClassName);
-        }
-        reset();
-        BGForwardModel fm = new BGForwardModel();
-        fm.setup(this);
-        BGStateJSON.loadFromJSON(this, jsonObject);
     }
 
     /**
@@ -386,9 +361,5 @@ public class BGGameState extends AbstractGameState implements IToJSON {
                 super.hashCode();
     }
 
-    @Override
-    public JSONObject toJSON() {
-        return BGStateJSON.toJSON(this);
-    }
 
 }

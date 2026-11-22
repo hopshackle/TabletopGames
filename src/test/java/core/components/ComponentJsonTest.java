@@ -61,6 +61,14 @@ public class ComponentJsonTest {
     }
 
     @Test
+    public void anEmptyDeckRoundTrips() throws Exception {
+        Deck<Card> deck = new Deck<>("discard", VisibilityMode.VISIBLE_TO_ALL);
+        Deck<Card> back = roundTrip(deck);
+        assertEquals(deck, back);
+        assertEquals(0, back.getSize());
+    }
+
+    @Test
     public void partialObservableDeckKeepsItsClassAndVisibility() throws Exception {
         PartialObservableDeck<Card> deck = new PartialObservableDeck<>("draw", 0, 2, VisibilityMode.HIDDEN_TO_ALL);
         deck.add(new Card("Silver"));

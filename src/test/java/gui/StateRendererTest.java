@@ -4,9 +4,7 @@ import games.GameType;
 import games.explodingkittens.ExplodingKittensForwardModel;
 import games.explodingkittens.ExplodingKittensGameState;
 import games.explodingkittens.ExplodingKittensParameters;
-import org.json.simple.JSONObject;
 import org.junit.Test;
-import utilities.JSONUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -70,8 +68,7 @@ public class StateRendererTest {
 
         Path tmpDir = Files.createTempDirectory("staterender-ek");
         File stateFile = new File(tmpDir.toFile(), "ek_state.json");
-        JSONObject json = state.toJSON();
-        JSONUtils.writeJSON(json, stateFile.getAbsolutePath());
+        Files.writeString(stateFile.toPath(), evaluation.records.SavedStates.toJson(state).toString());
 
         // Board-only (the central deck/discard area) and the full panel (info + board + actions).
         BufferedImage board = StateRenderer.renderToImage(GameType.ExplodingKittens, stateFile, false);

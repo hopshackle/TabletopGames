@@ -10,6 +10,7 @@ import evaluation.optimisation.TunableParameters;
 import games.GameType;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
+import utilities.JSONUtils;
 import utilities.Json;
 
 import java.io.IOException;
@@ -24,6 +25,9 @@ import java.util.*;
  * progress. A game's record adds the fields of its own state and, to be loadable, restores them in
  * {@link #restoreGame}. A record must hold everything needed to restore the state: a round trip through
  * {@link #toJson} and {@link #read} must give a state that {@code equals()} the original.
+ * <p>
+ * Restoring may hand the record's own objects (decks, cards) to the state, so a record is restored once, and
+ * from {@link #read}, which gives each component one instance however often it appears.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
 public abstract class AbstractGameStateRecord {
@@ -53,7 +57,7 @@ public abstract class AbstractGameStateRecord {
     public final List<IExtendedSequence> actionsInProgress;
 
     protected AbstractGameStateRecord(AbstractGameState gs) {
-        this.gameType = gs.getGameType();
+        this.gameType = gameTypeOf(gs);
         this.gameID = gs.getGameID();
 
         this.tick = gs.getGameTick();
@@ -103,11 +107,24 @@ public abstract class AbstractGameStateRecord {
 
     /** Applies this record to a state set up for the same game, parameters and player count. */
     public final void restore(AbstractGameState state) {
-        if (state.getGameType() != gameType || state.getNPlayers() != nPlayers)
+        if (gameTypeOf(state) != gameType || state.getNPlayers() != nPlayers)
             throw new IllegalArgumentException("A " + gameType + " record for " + nPlayers + " players cannot restore a "
-                    + state.getGameType() + " state for " + state.getNPlayers());
+                    + gameTypeOf(state) + " state for " + state.getNPlayers());
         state.restoreCoreFields(this);
         restoreGame(state);
+    }
+
+    /**
+     * The game a state belongs to. Games that share a state class (Backgammon and XII Scripta, the Dominion variants)
+     * report the first of them, so they are told apart by the class of their parameters.
+     */
+    public static GameType gameTypeOf(AbstractGameState gs) {
+        GameType reported = gs.getGameType();
+        Class<?> paramsClass = gs.getGameParameters() == null ? null : gs.getGameParameters().getClass();
+        if (paramsClass == null || reported.getParameterClass() == paramsClass) return reported;
+        for (GameType gt : GameType.values())
+            if (gt.getGameStateClass() == gs.getClass() && gt.getParameterClass() == paramsClass) return gt;
+        return reported;
     }
 
     /** The parameters this record was written with: the game's defaults, with the tunable values it holds. */
@@ -115,6 +132,9 @@ public abstract class AbstractGameStateRecord {
         AbstractParameters params = gameType.createParameters(0);
         if (gameParameters != null) {
             JSONObject raw = (JSONObject) JSONValue.parse(gameParameters.toString());
+            Object recordedClass = raw.get("class");
+            if (recordedClass != null && !recordedClass.equals(params.getClass().getName()))
+                return JSONUtils.loadClassFromJSON(raw);
             params = (AbstractParameters) TunableParameters.loadFromJSON((TunableParameters<?>) params, raw);
         }
         return params;

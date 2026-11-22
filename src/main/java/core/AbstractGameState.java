@@ -9,10 +9,7 @@ import evaluation.listeners.IGameListener;
 import evaluation.metrics.Event;
 import evaluation.optimisation.TunableParameters;
 import games.GameType;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 import utilities.ElapsedCpuChessTimer;
-import utilities.JSONUtils;
 import utilities.Pair;
 
 import java.util.*;
@@ -35,8 +32,8 @@ import static core.CoreConstants.GameResult.*;
 public abstract class AbstractGameState {
 
     /**
-     * The following fields are serializable into JSON with abstractGameStateToJSON.
-     * They are then populated on reconstruction from JSON with loadAbstractGameStateFromJSON.
+     * The following fields are written to JSON by {@link AbstractGameStateRecord}, the base of every game's record,
+     * and restored from it by {@link #restoreCoreFields}.
      * <p>
      * GameParameters are only fully supported in serialization/deserialization if they extend TunableParameters
      * (which is the only case in which they can be easily changed from their default values)
@@ -64,11 +61,7 @@ public abstract class AbstractGameState {
      * allComponents is built from _getAllComponents() when the state is initialised
      * history/historyText are omitted to save space, and they are intended to provide an audit trail for debugging, and no functionality should ever be based on them
      * <p>
-     * gamePhase needs to be serialized/reloaded, but that has to be done currently in the child implementation
-     * as we have no means of knowing the class to instantiate
-     * <p>
-     * actionsInProgress is serialized, but that requires the game implementation to support this for all ExtendedSequence implementations
-     * TAG will throw an error if serialization is attempted with any active actions on the stack that do not implement IToJSON
+     * gamePhase and actionsInProgress are written by the record too, with their classes, and restored
      * <p>
      * coreGameParameters deals with competition disqualification and non-standard action spaces. If could be serialized straightforwardly if needed
      * but for the moment any reload will just pick up the defaults
@@ -759,95 +752,6 @@ public abstract class AbstractGameState {
                 Objects.hash(firstPlayer),
                 Arrays.hashCode(playerResults)
         };
-    }
-
-    /**
-     * This converts all fields within AbstractGameState to a JSON object.
-     * An extension of AbstractGameState that implements IToJSON (and hence is serializable), calls this
-     * method to create one JSON moiety in the serialized game state.
-     */
-    @SuppressWarnings("unchecked")
-    public JSONObject abstractGameStateToJSON() {
-        JSONObject json = new JSONObject();
-        json.put("gameType", gameType.name());  // for info
-        json.put("gameStatus", gameStatus.name());
-        if (gamePhase instanceof Enum) {
-            json.put("gamePhase", ((Enum<?>) gamePhase).name());
-        } else if (gamePhase != null) {
-            json.put("gamePhase", gamePhase.toString());
-        }
-        json.put("turnOwner", turnOwner);
-        json.put("turnCounter", turnCounter);
-        json.put("roundCounter", roundCounter);
-        json.put("gameTick", tick);
-        json.put("firstPlayer", firstPlayer);
-        json.put("nPlayers", nPlayers);
-        json.put("nTeams", nTeams);
-        if (gameParameters instanceof TunableParameters<?> tunableParameters) {
-            json.put("gameParams", tunableParameters.instanceToJSON(true, new HashMap<>()));
-        }
-
-        JSONArray playerResultsJson = new JSONArray();
-        for (CoreConstants.GameResult res : playerResults) {
-            playerResultsJson.add(res.name());
-        }
-        json.put("playerResults", playerResultsJson);
-
-        // we also process the actionStack - but everything on it needs to implement IToJSON
-        // note that iterating over a Stack is in FIFO order, not the LIFO of pop()
-        // this works here because we push in the first item in the array
-        if (isActionInProgress()) {
-            JSONArray actionsInProgressJson = new JSONArray();
-            for (IExtendedSequence action : actionsInProgress) {
-                if (action instanceof IToJSON toJSONAction) {
-                    actionsInProgressJson.add(toJSONAction.toJSON());
-                } else {
-                    throw new IllegalStateException("Cannot serialize game state with ongoing actions that do not implement IToJSON : " + action.getClass().getName());
-                }
-                json.put("actionsInProgress", actionsInProgressJson);
-            }
-        }
-        return json;
-    }
-
-    /**
-     * This is the obverse of abstractGameStateToJSON. It takes a JSON object created by that method
-     * and uses it to populate the fields of this AbstractGameState instance.
-     */
-    public void loadAbstractGameStateFromJSON(JSONObject json) {
-
-        this.gameStatus = CoreConstants.GameResult.valueOf((String) json.get("gameStatus"));
-        this.turnOwner = ((Number) json.get("turnOwner")).intValue();
-        this.turnCounter = ((Number) json.get("turnCounter")).intValue();
-        this.roundCounter = ((Number) json.get("roundCounter")).intValue();
-        this.tick = ((Number) json.get("gameTick")).intValue();
-        this.firstPlayer = ((Number) json.get("firstPlayer")).intValue();
-        this.nPlayers = ((Number) json.get("nPlayers")).intValue();
-        this.nTeams = ((Number) json.get("nTeams")).intValue();
-
-        if (json.containsKey("gameParams")) {  // We only support serialization of tunable parameters (otherwise we just pick up the defaults)
-            this.gameParameters = TunableParameters.loadFromJSON((TunableParameters<?>) getGameParameters(), (JSONObject) json.get("gameParams"));
-        }
-
-        JSONArray playerResultsJson = (JSONArray) json.get("playerResults");
-        for (int i = 0; i < playerResultsJson.size(); i++) {
-            this.playerResults[i] = CoreConstants.GameResult.valueOf((String) playerResultsJson.get(i));
-        }
-
-        String phaseStr = (String) json.get("gamePhase");
-        if (phaseStr != null) {
-            try {
-                this.gamePhase = CoreConstants.DefaultGamePhase.valueOf(phaseStr);
-            } catch (Exception e) {
-                // Ignore, subclass is expected to handle this
-            }
-        }
-        JSONArray actionsInProgressJson = (JSONArray) json.get("actionsInProgress");
-        if (actionsInProgressJson != null) {
-            for (Object action : actionsInProgressJson) {
-                this.actionsInProgress.push(JSONUtils.loadClassFromJSON((JSONObject) action));
-            }
-        }
     }
 
     public boolean isGameOver() {

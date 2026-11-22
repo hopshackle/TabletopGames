@@ -94,7 +94,7 @@ public class UnoGameParameters extends TunableParameters {
     protected boolean _equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof UnoGameParameters)) return false;
-        if (!super.equals(o)) return false;
+        // TunableParameters.equals compares the parameter values and calls this method, so super.equals would recurse
         UnoGameParameters that = (UnoGameParameters) o;
         return nCardsPerPlayer == that.nCardsPerPlayer &&
                 nNumberCards == that.nNumberCards &&

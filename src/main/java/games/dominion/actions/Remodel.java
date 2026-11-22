@@ -113,7 +113,7 @@ public class Remodel extends DominionAction implements IExtendedSequence {
     public boolean equals(Object obj) {
         if (obj instanceof Remodel) {
             Remodel other = (Remodel) obj;
-            return super.equals(obj) && other.cardTrashed == cardGained && other.cardGained == cardGained;
+            return super.equals(obj) && other.cardTrashed == cardTrashed && other.cardGained == cardGained;
         }
         return false;
     }

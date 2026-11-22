@@ -4,23 +4,35 @@ import core.CoreConstants;
 import games.explodingkittens.actions.NopeableAction;
 import games.explodingkittens.actions.PlayEKCard;
 import games.explodingkittens.cards.ExplodingKittensCard;
-import org.json.simple.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import core.AbstractGameState;
+import evaluation.records.SavedStates;
+import org.junit.Rule;
 import org.junit.Test;
-import utilities.JSONUtils;
+import org.junit.rules.TemporaryFolder;
+import utilities.Json;
 
 import java.io.File;
+import java.nio.file.Files;
 
 import static games.explodingkittens.cards.ExplodingKittensCard.CardType.NOPE;
 import static games.explodingkittens.cards.ExplodingKittensCard.CardType.SKIP;
 import static org.junit.Assert.*;
 
 /**
- * Round-trip serialization tests for {@link ExplodingKittensGameState}, mirroring
+ * Round-trip tests for {@link ExplodingKittensGameState} through its {@link ExplodingKittensGameStateRecord}, mirroring
  * {@code games.backgammon.JSONTest} and {@code games.connect4.JSONTest}. Exploding Kittens is the
  * first game serialized that uses Extended Action Sequences, so the second and third tests
  * specifically exercise an {@link core.interfaces.IExtendedSequence} on the actionsInProgress stack.
  */
 public class JSONTest {
+
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
+
+    private static ExplodingKittensGameState roundTrip(ExplodingKittensGameState state) {
+        return (ExplodingKittensGameState) SavedStates.toState(SavedStates.toJson(state));
+    }
 
     private ExplodingKittensGameState freshState(int nPlayers) {
         ExplodingKittensParameters params = new ExplodingKittensParameters();
@@ -37,14 +49,12 @@ public class JSONTest {
         state.setTurnOwner(2);
         state.setGameStatus(CoreConstants.GameResult.GAME_ONGOING);
 
-        JSONObject json = state.toJSON();
+        JsonNode json = SavedStates.toJson(state);
+        assertEquals(ExplodingKittensGameStateRecord.class.getName(), json.get("class").asText());
+        assertEquals(1, json.get("firstPlayer").asInt());
+        assertEquals(2, json.get("turnOwner").asInt());
 
-        assertTrue(json.containsKey("abstractGameState"));
-        JSONObject abstractGS = (JSONObject) json.get("abstractGameState");
-        assertEquals(1L, ((Number) abstractGS.get("firstPlayer")).longValue());
-        assertEquals(2L, ((Number) abstractGS.get("turnOwner")).longValue());
-
-        ExplodingKittensGameState loaded = JSONUtils.loadClassFromJSON(json);
+        ExplodingKittensGameState loaded = roundTrip(state);
 
         // Full equality: decks (with componentIDs, order and visibility), counters and the
         // (here empty) actionsInProgress stack must all round-trip.
@@ -67,8 +77,7 @@ public class JSONTest {
         state.setActionInProgress(nopeable);
         assertTrue(state.isActionInProgress());
 
-        JSONObject json = state.toJSON();
-        ExplodingKittensGameState loaded = JSONUtils.loadClassFromJSON(json);
+        ExplodingKittensGameState loaded = roundTrip(state);
 
         assertEquals(state, loaded);
         assertTrue(loaded.isActionInProgress());
@@ -78,20 +87,15 @@ public class JSONTest {
     }
 
     @Test
-    public void testJSONLoadFromFile() {
+    public void testJSONLoadFromFile() throws Exception {
         ExplodingKittensGameState state = freshState(3);
         state.setTurnOwner(0);
         state.getPlayerHand(1).add(new ExplodingKittensCard(NOPE));
         state.setActionInProgress(new NopeableAction(0, new PlayEKCard(SKIP), state));
 
-        JSONObject json = state.toJSON();
-        JSONUtils.writeJSON(json, "src/ekTestFile.json");
-
-        ExplodingKittensGameState loaded = JSONUtils.loadClassFromFile("src/ekTestFile.json");
-
+        File file = tmp.newFile("ekState.json");
+        Files.writeString(file.toPath(), Json.prettyWriter().writeValueAsString(SavedStates.toJson(state)));
+        AbstractGameState loaded = SavedStates.load(file);
         assertEquals(state, loaded);
-        // we need to ensure the file root is picked up correctly to delete this
-        File file = new File("src/ekTestFile.json");
-        file.delete();
     }
 }

@@ -8,7 +8,8 @@ public class Edge extends Component {
         super(CoreConstants.ComponentType.BOARD_NODE, "Edge");
         setOwnerId(-1);
     }
-    private Edge(int ownerID, int id) {
+    /** An edge with a given ID, as when a saved board is restored. */
+    public Edge(int ownerID, int id) {
         super(CoreConstants.ComponentType.BOARD_NODE, "Edge", id);
         setOwnerId(ownerID);
     }
@@ -25,7 +26,8 @@ public class Edge extends Component {
 
     @Override
     public int hashCode() {
-        return componentID * 31 + ownerId;
+        // not the owner: it changes (a road is built) while the edge is a key in its nodes' maps
+        return componentID;
     }
 
     @Override

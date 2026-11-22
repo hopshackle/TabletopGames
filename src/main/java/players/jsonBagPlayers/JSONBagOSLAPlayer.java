@@ -21,6 +21,11 @@ public class JSONBagOSLAPlayer extends AbstractPlayer {
         this.rnd = random;
     }
 
+    /** Tokenize states after the structuring pass (see {@link JsonStructurer}), as the prototypes were. */
+    public void setStructured(boolean structured) {
+        heuristic.setStructured(structured);
+    }
+
     public JSONBagOSLAPlayer(List<Map<String, Integer>> prototypes, List<String> filterList) {
        this(prototypes, filterList, new Random());
     }

@@ -1,10 +1,13 @@
 package core.actions;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import core.AbstractGameState;
 import core.interfaces.IPrintable;
 
 import java.util.Set;
 
+/** Written to JSON with its class name under {@code "class"}, as components are. */
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
 public abstract class AbstractAction implements IPrintable {
 
     private boolean saveGameBeforeAction = false;

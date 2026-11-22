@@ -61,4 +61,14 @@ class MerchantBuyEffect implements IDelayedAction {
         // no mutable state
         return this;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof MerchantBuyEffect other && other.player == player;
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * player + 7;
+    }
 }
