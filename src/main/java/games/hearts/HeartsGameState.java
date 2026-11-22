@@ -323,7 +323,6 @@ public class HeartsGameState extends AbstractGameState implements ITrickTakingSt
     public boolean _equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof HeartsGameState)) return false;
-        if (!super.equals(o)) return false;
         HeartsGameState that = (HeartsGameState) o;
         return heartsBroken == that.heartsBroken &&
                 Arrays.equals(playerTricksTaken, that.playerTricksTaken) &&

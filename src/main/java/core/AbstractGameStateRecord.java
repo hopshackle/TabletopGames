@@ -24,6 +24,9 @@ import java.util.*;
  * progress. A game's record adds the fields of its own state and, to be loadable, restores them in
  * {@link #restoreGame}. A record must hold everything needed to restore the state: a round trip through
  * {@link #toJson} and {@link #read} must give a state that {@code equals()} the original.
+ * <p>
+ * Restoring may hand the record's own objects (decks, cards) to the state, so a record is restored once, and
+ * from {@link #read}, which gives each component one instance however often it appears.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
 public abstract class AbstractGameStateRecord {

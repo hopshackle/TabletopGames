@@ -5,6 +5,7 @@ import core.AbstractGameStateRecord;
 import core.components.Deck;
 import games.uno.cards.UnoCard;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class UnoGameStateRecord extends AbstractGameStateRecord {
@@ -32,5 +33,23 @@ public class UnoGameStateRecord extends AbstractGameStateRecord {
         // Turn order data
         skipTurn = gs.skipTurn;
         direction = gs.direction;
+    }
+
+    @SuppressWarnings("unused") // for JSON
+    private UnoGameStateRecord() {
+    }
+
+    @Override
+    protected void restoreGame(AbstractGameState state) {
+        UnoGameState uno = (UnoGameState) state;
+        uno.playerDecks = new ArrayList<>(playerDecks);
+        uno.drawDeck = drawDeck;
+        uno.discardDeck = discardDeck;
+        uno.currentCard = currentCard;
+        uno.currentColor = currentColor;
+        uno.playerScore = playerScore.clone();
+        uno.expulsionRound = expulsionRound.clone();
+        uno.skipTurn = skipTurn;
+        uno.direction = direction;
     }
 }
