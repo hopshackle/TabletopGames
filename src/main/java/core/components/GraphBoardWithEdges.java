@@ -23,7 +23,8 @@ public class GraphBoardWithEdges extends Component implements IComponentContaine
         boardNodes = new LinkedHashMap<>(initialCapacity);
     }
 
-    protected GraphBoardWithEdges(String name, int ID)
+    /** A board with a given ID, as when a saved board is restored. */
+    public GraphBoardWithEdges(String name, int ID)
     {
         super(CoreConstants.ComponentType.BOARD, name, ID);
         boardNodes = new LinkedHashMap<>(initialCapacity);

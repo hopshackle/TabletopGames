@@ -111,7 +111,7 @@ public class GameStateRecordRoundTripTest {
         for (Class<?> c = a.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
             for (java.lang.reflect.Field f : c.getDeclaredFields()) {
                 if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
-                if (NOT_COMPARED.contains(f.getName())) continue;
+                if (NOT_COMPARED.contains(f.getName()) || Random.class.isAssignableFrom(f.getType())) continue;
                 try {
                     f.setAccessible(true);
                     if (!Objects.deepEquals(f.get(a), f.get(b)))

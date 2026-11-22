@@ -261,6 +261,11 @@ public class JSONBagTokenizerTest {
         assertTrue(Tokenizer.isIdentityToken(".deck[0].componentID.41"));
         assertTrue(Tokenizer.isIdentityToken(".hand.ownerId"));
         assertFalse(Tokenizer.isIdentityToken(".deck.componentName.Copper"));
+        // keys holding component IDs end in ID or IDs, by convention
+        assertTrue(Tokenizer.isIdentityToken(".board.verticesBoardNodeIDs.391"));
+        assertTrue(Tokenizer.isIdentityToken(".catanGraph.nodes.links.neighbourID.417"));
+        assertFalse(Tokenizer.isIdentityToken(".catanGraph.nodes.links.owner.1"));
+        assertFalse(Tokenizer.isIdentityToken(".valueIdx.3"));
     }
 
     @Test
