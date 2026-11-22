@@ -5,11 +5,12 @@ import core.actions.DoNothing;
 import core.actions.SimultaneousAction;
 import core.interfaces.IExtendedSequence;
 import core.interfaces.IPrintable;
-import core.interfaces.IToJSON;
 import core.turnorders.ReactiveTurnOrder;
 import evaluation.MultiGameRunner;
+import evaluation.listeners.GameStateSnapshotter;
 import evaluation.listeners.IGameListener;
 import evaluation.metrics.Event;
+import evaluation.records.SavedStates;
 import games.GameType;
 import games.pandemic.PandemicForwardModel;
 import gui.AbstractGUIManager;
@@ -22,14 +23,12 @@ import players.jsonBagPlayers.Tokenizer;
 import players.simple.OSLAPlayer;
 import players.mcts.MCTSPlayer;
 import players.simple.RandomPlayer;
-import utilities.JSONUtils;
 import utilities.Pair;
 import utilities.Utils;
 
 import javax.swing.Timer;
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +66,8 @@ public class Game {
     protected AbstractAction overrideAction;
     // the player being asked for an action; with simultaneous moves this need not be the current player (-1 if none)
     private volatile int playerToMove = -1;
-    protected String savedStateDirectory = "SavedStates";
+    protected String savedStateDirectory = GameStateSnapshotter.DIRECTORY;
+    private GameStateSnapshotter actionSnapshotter;
 
     /**
      * Game constructor. Receives a list of players, a forward model and a game state. Sets unique and final
@@ -494,11 +494,8 @@ public class Game {
             }
             AbstractAction action = actionsChosen.get(p);
             // save game state if requested
-            if (action.saveGame() && gameState instanceof IToJSON serialisableGameState) {
-                String directory = String.format("%s%s%s%sG%d", savedStateDirectory, File.separator, gameType.name(), File.separator, gameState.getGameID());
-                Utils.createDirectory(directory);
-                String filename = String.format("%sP%d_Tick%d.json", directory + File.separator, p, gameState.getGameTick());
-                JSONUtils.writeJSON(serialisableGameState.toJSON(), filename);
+            if (action.saveGame() && SavedStates.canSave(gameState)) {
+                actionSnapshotter().save(gameState, GameStateSnapshotter.ACTION_TRIGGER, p);
             }
         }
 
@@ -698,6 +695,12 @@ public class Game {
 
     public void setSavedStatesDirectory(String dir) {
         savedStateDirectory = dir;
+        actionSnapshotter = null;
+    }
+
+    private GameStateSnapshotter actionSnapshotter() {
+        if (actionSnapshotter == null) actionSnapshotter = GameStateSnapshotter.into(savedStateDirectory);
+        return actionSnapshotter;
     }
 
     public String getSavedStatesDirectory() {
@@ -820,7 +823,7 @@ public class Game {
         int topKFeatures = 100;
         String filterListPath = topFeaturesFolderPath + "features-top" + topKFeatures + ".json";
         System.out.println("READING TOP FEATURES FROM " + filterListPath);
-        List<String> topFeaturesFilterList = Tokenizer.loadStringList(filterListPath);
+        List<String> topFeaturesFilterList = Tokenizer.loadFeatureList(filterListPath);
 
         Set<String> topFeaturesFilterSet = new HashSet<>(topFeaturesFilterList);
         for (Map<String, Integer> prototype : prototypes) {

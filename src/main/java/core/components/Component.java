@@ -1,5 +1,7 @@
 package core.components;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import core.properties.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -8,14 +10,37 @@ import core.CoreConstants.ComponentType;
 
 import java.util.*;
 
+/**
+ * Written to JSON (see {@link utilities.Json}) with its class name under {@code "class"}, and with its
+ * {@code componentID} and {@code ownerId}, so that a state read back has the same components. JSON-Bag drops
+ * both IDs when tokenizing.
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
 public abstract class Component {
     private static int ID = 0;  // All components receive a unique and final ID from this always increasing counter
 
+    @JsonProperty
     protected transient final int componentID;  // Unique ID of this component
     protected final ComponentType type;  // Type of this component
     protected HashMap<Integer, Property> properties;  // Maps between integer key for the property and the property object
+    @JsonProperty
     protected transient int ownerId = -1;  // By default belongs to the game
     protected String componentName;  // Name of this component
+
+    /** For JSON: the reader sets every field, the component ID included, so no new ID is drawn. */
+    protected Component() {
+        this.componentID = -1;
+        this.type = null;
+        this.properties = new HashMap<>();
+    }
+
+    /**
+     * Moves the ID counter past {@code maxId}, so that components created after a state has been read back
+     * do not reuse the IDs of the components that were read.
+     */
+    public static void reserveIdsUpTo(int maxId) {
+        ID = Math.max(ID, maxId + 1);
+    }
 
     public Component(ComponentType type, String name) {
         this.componentID = ID++;

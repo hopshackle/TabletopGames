@@ -201,7 +201,7 @@ public class JSONBagValueFunctionExperiments {
         if (!topFeaturesFile.exists()) {
             return Collections.emptyList();
         }
-        return Tokenizer.loadStringList(topFeaturesPath);
+        return Tokenizer.loadFeatureList(topFeaturesPath);
     }
 
     private static void initialiseCsv(String csvOutputPath) {

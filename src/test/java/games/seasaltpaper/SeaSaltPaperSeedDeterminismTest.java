@@ -41,7 +41,7 @@ public class SeaSaltPaperSeedDeterminismTest {
             forwardModel.next(otherState, actions.get(0).copy());
         }
         utilities.Json.toTree(
-                evaluation.containers.GameStateContainerFactory.createContainer(otherState));
+                evaluation.records.GameStateRecordFactory.createRecord(otherState));
 
         Map<String, Integer> after = Tokenizer.tokenize(seaSaltPaper(101L));
 

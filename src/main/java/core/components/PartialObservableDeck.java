@@ -39,6 +39,11 @@ public class PartialObservableDeck<T extends Component> extends Deck<T> {
     }
 
 
+    @SuppressWarnings("unused") // for JSON
+    protected PartialObservableDeck() {
+        super();
+    }
+
     public PartialObservableDeck(String id, int ownerID, boolean[] defaultVisibility) {
         super(id, ownerID, VisibilityMode.MIXED_VISIBILITY);
         this.deckVisibility = defaultVisibility;

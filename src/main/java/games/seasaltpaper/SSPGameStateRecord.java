@@ -1,13 +1,13 @@
 package games.seasaltpaper;
 
-import core.AbstractGameStateContainer;
+import core.AbstractGameStateRecord;
 import core.components.Deck;
 import core.components.PartialObservableDeck;
 import games.seasaltpaper.cards.SeaSaltPaperCard;
 
 import java.util.List;
 
-public class SSPGameStateContainer extends AbstractGameStateContainer {
+public class SSPGameStateRecord extends AbstractGameStateRecord {
     public final List<PartialObservableDeck<SeaSaltPaperCard>> playerHands;
     public final List<Deck<SeaSaltPaperCard>> playerDiscards;
     public final Deck<SeaSaltPaperCard> discardPile1, discardPile2;
@@ -17,7 +17,7 @@ public class SSPGameStateContainer extends AbstractGameStateContainer {
     public final int[] playerTotalScores; // player points of previous rounds
 
 
-    public SSPGameStateContainer(SeaSaltPaperGameState gs) {
+    public SSPGameStateRecord(SeaSaltPaperGameState gs) {
         super(gs);
         this.playerHands = gs.getPlayerHands();
         this.playerDiscards = gs.getPlayerDiscards();

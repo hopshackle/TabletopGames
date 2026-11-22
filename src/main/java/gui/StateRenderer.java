@@ -1,12 +1,12 @@
 package gui;
 
 import core.AbstractGameState;
+import evaluation.records.SavedStates;
 import core.AbstractPlayer;
 import core.Game;
 import games.GameType;
 import players.human.ActionController;
 import players.simple.RandomPlayer;
-import utilities.JSONUtils;
 import utilities.Utils;
 
 import javax.imageio.ImageIO;
@@ -28,7 +28,9 @@ import java.util.List;
  * <p>
  * Arguments (key=value):
  * <ul>
- *   <li>{@code input}     - path to a saved-state JSON file, or a directory of {@code *.json} files (batch mode).</li>
+ *   <li>{@code input}     - path to a saved-state file ({@code .json}, or a game's {@code .jsonl}), or a directory of
+ *                           such files (batch mode). From a {@code .jsonl} file the last state is rendered.</li>
+ *   <li>{@code tick}      - for a single {@code .jsonl} file, the tick of the state to render.</li>
  *   <li>{@code output}    - output PNG path (single file), or output directory (batch mode). Defaults to the
  *                           input path with its extension replaced by {@code .png}.</li>
  *   <li>{@code game}      - {@link GameType} name (default {@code XIIScripta}).</li>
@@ -43,9 +45,10 @@ public class StateRenderer {
         String output = Utils.getArg(args, "output", "");
         String game = Utils.getArg(args, "game", "XIIScripta");
         boolean fullPanel = Utils.getArg(args, "fullPanel", false);
+        int tick = Utils.getArg(args, "tick", -1);
 
         if (input.isEmpty()) {
-            System.out.println("Usage: input=<file-or-dir> [output=<file-or-dir>] [game=XIIScripta] [fullPanel=false]");
+            System.out.println("Usage: input=<file-or-dir> [tick=<tick>] [output=<file-or-dir>] [game=XIIScripta] [fullPanel=false]");
             return;
         }
 
@@ -55,7 +58,7 @@ public class StateRenderer {
             throw new AssertionError("Input does not exist: " + input);
 
         if (inputFile.isDirectory()) {
-            File[] jsonFiles = inputFile.listFiles((dir, name) -> name.toLowerCase().endsWith(".json"));
+            File[] jsonFiles = inputFile.listFiles((dir, name) -> name.toLowerCase().endsWith(".json") || name.toLowerCase().endsWith(".jsonl"));
             if (jsonFiles == null || jsonFiles.length == 0) {
                 System.out.println("No .json files found in directory " + input);
                 return;
@@ -79,7 +82,8 @@ public class StateRenderer {
             File png = output.isEmpty()
                     ? new File(inputFile.getParentFile(), stripExtension(inputFile.getName()) + ".png")
                     : new File(output);
-            render(gameType, inputFile, png, fullPanel);
+            AbstractGameState state = tick >= 0 ? SavedStates.load(inputFile, tick) : SavedStates.load(inputFile);
+            write(renderToImage(gameType, state, fullPanel), png);
             System.out.println("Rendered " + inputFile + " to " + png);
         }
     }
@@ -93,7 +97,10 @@ public class StateRenderer {
      * @param fullPanel  if true render the whole game panel; otherwise the board view only.
      */
     public static void render(GameType gameType, File stateFile, File outputFile, boolean fullPanel) {
-        BufferedImage img = renderToImage(gameType, stateFile, fullPanel);
+        write(renderToImage(gameType, stateFile, fullPanel), outputFile);
+    }
+
+    private static void write(BufferedImage img, File outputFile) {
         try {
             ImageIO.write(img, "png", outputFile);
         } catch (Exception e) {
@@ -108,8 +115,8 @@ public class StateRenderer {
      *                  the board view (the component placed at {@link BorderLayout#CENTER} by the GUI manager).
      */
     public static BufferedImage renderToImage(GameType gameType, File stateFile, boolean fullPanel) {
-        // 1. Load the saved state
-        AbstractGameState state = JSONUtils.loadClassFromFile(stateFile.getAbsolutePath());
+        // 1. Load the saved state (the last one, if the file holds a game's states)
+        AbstractGameState state = SavedStates.load(stateFile);
         return renderToImage(gameType, state, fullPanel);
     }
 

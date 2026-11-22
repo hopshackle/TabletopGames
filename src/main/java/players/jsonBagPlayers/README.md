@@ -7,10 +7,10 @@ The point of going through JSON is that the same code works for any game, as lon
 ## Pipeline
 
 ```
-AbstractGameState  ->  XGameStateContainer  ->  JSON (utilities.Json)  ->  tokens  ->  Map<String,Integer>
+AbstractGameState  ->  XGameStateRecord  ->  JSON (utilities.Json)  ->  tokens  ->  Map<String,Integer>
 ```
 
-The container is the piece you write per game. Everything downstream is game-agnostic.
+The record is the piece you write per game. Everything downstream is game-agnostic.
 
 ## Files
 
@@ -20,12 +20,12 @@ The container is the piece you write per game. Everything downstream is game-agn
 | `JensenShannonDistance` | Removed. The helpers live in `utilities.Utils`: `jensenShannonDistance(Map, Map)` for two bags, `normaliseDistribution` for counts, and `double[]` overloads for plain probability vectors. JSD is symmetric and bounded by 1. |
 | `JSONBagHeuristic` | `IStateHeuristic` that scores a state by JSD to one prototype bag per player. |
 | `JSONBagOSLAPlayer` | One-step look-ahead: rolls each legal action forward, scores the result with `JSONBagHeuristic`, plays the best. |
-| `GameStateContainerFactory` | Maps a `GameType` to the container class that snapshots it. Throws if the game has no container. |
+| `GameStateRecordFactory` | Maps a `GameType` to the record class that snapshots it. Throws if the game has no record. |
 | `TokenizerTest` | Scratch harness, not a JUnit test. It lives in `src/main/java`, reads `test.txt` and `filterTest.json`, and does not run under surefire. |
 
 ## Quick start
 
-For a game that already has a container (`CantStop`, `Catan`, `Connect4`, `Dominion` and its two variants, `DotsAndBoxes`, `SeaSaltPaper`, `Uno`, `Wonders7`):
+For a game that already has a record (`CantStop`, `Catan`, `Connect4`, `Dominion` and its two variants, `DotsAndBoxes`, `SeaSaltPaper`, `Uno`, `Wonders7`):
 
 ```java
 // One prototype bag per player. The bundled folders hold four, one per seat of a 4-player game;
@@ -50,18 +50,18 @@ player.setForwardModel(game.getForwardModel());  // not needed inside Game, whic
 
 ## Adding a new game
 
-### 1. Write the container
+### 1. Write the record
 
-Create `games.<game>.<Game>GameStateContainer` next to the state class. It extends `AbstractGameStateContainer` and copies the fields you want in the token bag. CantStop's is the smallest complete example:
+Create `games.<game>.<Game>GameStateRecord` next to the state class. It extends `AbstractGameStateRecord` and copies the fields you want in the token bag. CantStop's is the smallest complete example:
 
 ```java
-public class CantStopGameStateContainer extends AbstractGameStateContainer {
+public class CantStopGameStateRecord extends AbstractGameStateRecord {
 
     protected boolean[] completedColumns;
     protected int[][] playerMarkerPositions;
     protected List<Dice> dice;
 
-    public CantStopGameStateContainer(CantStopGameState gs) {
+    public CantStopGameStateRecord(CantStopGameState gs) {
         super(gs);
         completedColumns = gs.completedColumns;
         playerMarkerPositions = gs.playerMarkerPositions;
@@ -72,24 +72,24 @@ public class CantStopGameStateContainer extends AbstractGameStateContainer {
 
 What to include: decks, hands, counters, board occupancy, scores, and phase flags that describe the position.
 
-What to leave out: the game parameters, the action history, timers and the extended-sequence stack. The base class already excludes those, and repeating them adds tokens that say nothing about the position and cost time to serialise. `CatanGameStateContainer` shows both sides: it copies scores, resources, tokens, dev cards and the trade offer, while exchange rates, `developmentCardPlayed` and `nTradesThisTurn` are commented out.
+What to leave out: the game parameters, the action history, timers and the extended-sequence stack. The base class already excludes those, and repeating them adds tokens that say nothing about the position and cost time to serialise. `CatanGameStateRecord` shows both sides: it copies scores, resources, tokens, dev cards and the trade offer, while exchange rates, `developmentCardPlayed` and `nTradesThisTurn` are commented out.
 
-Any field of the container is tokenised, so the container is also your control over what the bag can see. If a field is needed by the game but not by the bag, leave it out.
+Any field of the record is tokenised, so the record is also your control over what the bag can see. If a field is needed by the game but not by the bag, leave it out.
 
 ### 2. Register it in the factory
 
 ```java
-// in GameStateContainerFactory's static block
-containerFactories.put(GameType.Foo, gs -> new FooGameStateContainer((FooGameState) gs));
+// in GameStateRecordFactory's static block
+recordFactories.put(GameType.Foo, gs -> new FooGameStateRecord((FooGameState) gs));
 ```
 
-Lookup is by exact `GameType`, so a game with variants needs one line per variant. Dominion does this for `DominionSizeDistortion` and `DominionImprovements`, both pointing at `DominionGameStateContainer`.
+Lookup is by exact `GameType`, so a game with variants needs one line per variant. Dominion does this for `DominionSizeDistortion` and `DominionImprovements`, both pointing at `DominionGameStateRecord`.
 
-`GameStateContainerFactory.hasContainer(gameType)` answers whether a game is wired up.
+`GameStateRecordFactory.hasRecord(gameType)` answers whether a game is wired up.
 
-### 3. Make sure the container serialises
+### 3. Make sure the record serialises
 
-`Tokenizer` serialises the container from its fields with the shared Jackson mapper in `utilities.Json` (getters are ignored, `transient` fields are skipped). A field that cannot be written fails at runtime, and the most common failure is a name collision inside a component:
+`Tokenizer` serialises the record from its fields with the shared Jackson mapper in `utilities.Json` (getters are ignored, `transient` fields are skipped). A field that cannot be written fails at runtime, and the most common failure is a name collision inside a component:
 
 ```
 games.uno.cards.UnoCard declares multiple JSON fields named type (in games.uno.cards.UnoCard and core.components.Component)
@@ -100,8 +100,8 @@ games.uno.cards.UnoCard declares multiple JSON fields named type (in games.uno.c
 A quick check before going further:
 
 ```java
-AbstractGameStateContainer container = GameStateContainerFactory.createContainer(gs);
-System.out.println(Json.prettyWriter().writeValueAsString(container));
+AbstractGameStateRecord record = GameStateRecordFactory.createRecord(gs);
+System.out.println(Json.prettyWriter().writeValueAsString(record));
 ```
 
 ### 4. Look at the tokens
@@ -133,7 +133,7 @@ Check that you see the entities you meant to include, that the counts are stable
 
 ### 5. Add a test
 
-Put it in `src/test/java/players/jsonBagPlayers/`, next to `JSONBagOSLAPlayerTest`. Assert on tokens you expect, not on the whole bag, so small changes to the container do not break the test for no reason:
+Put it in `src/test/java/players/jsonBagPlayers/`, next to `JSONBagOSLAPlayerTest`. Assert on tokens you expect, not on the whole bag, so small changes to the record do not break the test for no reason:
 
 ```java
 Map<String, Integer> bag = Tokenizer.tokenize(state);   // a fresh 2-player CantStop game
@@ -205,6 +205,6 @@ The prototype and feature folders are generated by your own runs and are not in 
 
 - `JSONBagOSLAPlayer._getAction` shuffles the legal actions with the global `Collections.shuffle(actions)` before scoring, so a seeded run can still pick different actions between ties. Seed the shuffle through `rnd` if you need reproducible runs.
 - A bag that shares no tokens with any prototype is a degenerate input; `subtractNormalized` throws `IllegalStateException` with the distances rather than returning `NaN`.
-- The container is a hand-written snapshot. When the game state gains a field you want tokenised, add it to the container as well, or the bag silently ignores it.
-- Map entries are written in key order where the keys are comparable. A map keyed by objects that are not comparable is written in its own iteration order, so a `HashMap` keyed by objects without a stable `hashCode` still shows up as noisy tokens. Prefer lists and `LinkedHashMap`/enum-keyed maps in containers.
+- The record is a hand-written snapshot. When the game state gains a field you want tokenised, add it to the record as well, or the bag silently ignores it.
+- Map entries are written in key order where the keys are comparable. A map keyed by objects that are not comparable is written in its own iteration order, so a `HashMap` keyed by objects without a stable `hashCode` still shows up as noisy tokens. Prefer lists and `LinkedHashMap`/enum-keyed maps in records.
 

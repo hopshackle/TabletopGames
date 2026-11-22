@@ -1,5 +1,8 @@
 package core.properties;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import utilities.Utils;
 
 import java.awt.*;
@@ -7,9 +10,11 @@ import java.awt.*;
 public class PropertyColor extends Property
 {
     public String valueStr;
+    @JsonIgnore
     private Color value;
 
-    public PropertyColor(String hashString, String valStr)
+    @JsonCreator
+    public PropertyColor(@JsonProperty("hashString") String hashString, @JsonProperty("valueStr") String valStr)
     {
         super(hashString);
         this.value = Utils.stringToColor(valStr);

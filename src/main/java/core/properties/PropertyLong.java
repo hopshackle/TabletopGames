@@ -4,6 +4,10 @@ public class PropertyLong extends Property
 {
     public long value;
 
+    @SuppressWarnings("unused") // for JSON
+    private PropertyLong() {
+    }
+
     public PropertyLong(String hashString, long value)
     {
         super(hashString);

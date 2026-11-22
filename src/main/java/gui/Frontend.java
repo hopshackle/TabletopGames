@@ -4,14 +4,13 @@ import core.*;
 import core.actions.AbstractAction;
 import evaluation.listeners.MetricsGameListener;
 import evaluation.optimisation.TunableParameters;
+import evaluation.records.SavedStates;
 import evaluation.metrics.Event;
 import games.GameType;
 import gui.models.AITableModel;
-import org.json.simple.JSONObject;
 import players.PlayerParameters;
 import players.PlayerType;
 import players.human.ActionController;
-import utilities.JSONUtils;
 
 import javax.swing.Timer;
 import javax.swing.*;
@@ -212,19 +211,30 @@ public class Frontend extends GUI {
         });
         nPlayers.add(BorderLayout.EAST, updateNPlayers);
 
-        // Load a saved game state from a JSON file. If one is selected, the game state is instantiated
-        // from the file and the game type, number of players and game parameters are read from it and
-        // applied to the controls above. This requires the game state to implement IToJSON and to provide
-        // a constructor taking a JSONObject (currently only Backgammon / XII Scripta do so).
+        // Load a saved game state (see SavedStates): a .json file with one state, or a game's .jsonl file, from
+        // which the player picks a position. The game type, number of players and game parameters are read from
+        // the state and applied to the controls above.
         JButton loadStateButton = new JButton("Load JSON");
         JPanel loadStatePanel = labelledRow("  Load game state:", null, loadStateButton);
         JFileChooser stateFileChooser = jsonFileChooser();
+        stateFileChooser.resetChoosableFileFilters();
+        stateFileChooser.setAcceptAllFileFilterUsed(false);
+        stateFileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Saved game states", "json", "jsonl"));
         loadStateButton.addActionListener(e -> {
             if (stateFileChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
                 return;
             File stateFile = stateFileChooser.getSelectedFile();
             try {
-                LoadedGameState loaded = loadGameStateFromFile(stateFile);
+                List<SavedStates.Entry> entries = SavedStates.entries(stateFile);
+                SavedStates.Entry entry = entries.get(entries.size() - 1);
+                if (entries.size() > 1) {
+                    String[] choices = entries.stream().map(Frontend::describe).toArray(String[]::new);
+                    Object chosen = JOptionPane.showInputDialog(this, "Choose a saved position:", "Load game state",
+                            JOptionPane.QUESTION_MESSAGE, null, choices, choices[choices.length - 1]);
+                    if (chosen == null) return;
+                    entry = entries.get(Arrays.asList(choices).indexOf(chosen));
+                }
+                LoadedGameState loaded = loadGameState(entry);
                 int gameIdx = Arrays.asList(gameNames).indexOf(loaded.gameType().name());
 
                 // Apply to the GUI: game type first (its listener resets the player count limits)...
@@ -510,45 +520,31 @@ public class Frontend extends GUI {
      */
     public record LoadedGameState(GameType gameType, int nPlayers, AbstractGameState state) {}
 
+    private static String describe(SavedStates.Entry entry) {
+        return "Tick " + entry.tick() + (entry.player() >= 0 ? ", player " + entry.player() : "")
+                + (entry.trigger() != null ? " (" + entry.trigger() + ")" : "");
+    }
+
     /**
-     * Loads a saved game state from a JSON file. The file is expected to have a top-level "class"
-     * naming the {@link AbstractGameState} subclass and an "abstractGameState" object holding the
-     * number of players and the game parameters (see {@link core.interfaces.IToJSON}).
-     * <p>
-     * The {@link GameType} is resolved by matching the state class and (where present) the
-     * parameters class. Matching on the parameters class is required to disambiguate games that
-     * share a state class - e.g. Backgammon and XII Scripta both use {@code BGGameState}, whose
-     * {@code _getGameType()} always reports Backgammon.
+     * Loads a saved game state: the last one in the file (see {@link SavedStates}).
      *
-     * @param file the JSON file to load
-     * @return the resolved game type, player count and instantiated state
-     * @throws IllegalArgumentException if no game matches the state/parameters classes in the file
+     * @return the game type, player count and state
+     * @throws IllegalArgumentException if the file holds no state, or no game matches it
      */
     public static LoadedGameState loadGameStateFromFile(File file) {
-        JSONObject json = JSONUtils.loadJSONFile(file.getPath());
-        String stateClassName = (String) json.get("class");
-        JSONObject abstractGS = (JSONObject) json.get("abstractGameState");
-        int nPlayers = ((Number) abstractGS.get("nPlayers")).intValue();
-        JSONObject gameParamsJSON = (JSONObject) abstractGS.get("gameParams");
-        String paramsClassName = gameParamsJSON == null ? null : (String) gameParamsJSON.get("class");
+        List<SavedStates.Entry> entries = SavedStates.entries(file);
+        if (entries.isEmpty()) throw new IllegalArgumentException(file + " holds no saved state");
+        return loadGameState(entries.get(entries.size() - 1));
+    }
 
-        GameType gameType = null;
-        for (GameType gt : GameType.values()) {
-            if (gt.getGameStateClass() == null || !gt.getGameStateClass().getName().equals(stateClassName))
-                continue;
-            if (paramsClassName == null ||
-                    (gt.getParameterClass() != null && gt.getParameterClass().getName().equals(paramsClassName))) {
-                gameType = gt;
-                break;
-            }
-        }
-        if (gameType == null)
-            throw new IllegalArgumentException("No game matches state class " + stateClassName
-                    + (paramsClassName == null ? "" : " with parameters " + paramsClassName));
-
-        // Instantiate the game state from the file (this also validates that the file is loadable)
-        AbstractGameState state = JSONUtils.loadClassFromJSON(json);
-        return new LoadedGameState(gameType, nPlayers, state);
+    /**
+     * Loads a saved state. The {@link GameType} comes from {@link SavedStates#gameType}, which tells apart
+     * games that share a state class, such as Backgammon and XII Scripta.
+     */
+    public static LoadedGameState loadGameState(SavedStates.Entry entry) {
+        GameType gameType = entry.gameType();
+        AbstractGameState state = entry.toState();
+        return new LoadedGameState(gameType, state.getNPlayers(), state);
     }
 
     private void initialisePlayerParameterWindow(int playerIndex, int agentIndex) {

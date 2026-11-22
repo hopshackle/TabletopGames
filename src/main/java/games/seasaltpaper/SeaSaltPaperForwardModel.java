@@ -8,11 +8,8 @@ import core.components.PartialObservableDeck;
 import games.seasaltpaper.actions.*;
 import games.seasaltpaper.cards.*;
 import games.seasaltpaper.SeaSaltPaperGameState.TurnPhase;
-import utilities.Json;
 import utilities.Pair;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 
 import static core.CoreConstants.*;
@@ -128,18 +125,10 @@ public class SeaSaltPaperForwardModel extends StandardForwardModel {
         // Victory condition reached, end the game
         if (max >= param.victoryCondition[gs.getNPlayers() - 2]) {
             endGame(gs); // TODO implement 4 Mermaid insta win
-            if (gs.saveState)
-            {
-                gameStateToJson(gs);
-            }
         }
         else {
             int nextPlayer = (gs.getCurrentPlayer() + 1) % gs.getNPlayers();
             endRound(gs, nextPlayer);
-            if (gs.saveState)
-            {
-                gameStateToJson(gs);
-            }
             setupRound(gs);
         }
     }
@@ -252,22 +241,6 @@ public class SeaSaltPaperForwardModel extends StandardForwardModel {
             int nextPlayer = (sspgs.getCurrentPlayer() + 1) % sspgs.getNPlayers();
             endPlayerTurn(sspgs, nextPlayer);
             sspgs.currentPhase = sspgs.currentPhase.next();
-            if (sspgs.saveState && (sspgs.getTurnCounter() % sspgs.saveCycle == 0))
-            {
-                gameStateToJson(sspgs);
-            }
-        }
-    }
-
-    private void gameStateToJson(SeaSaltPaperGameState gs) {
-        SeaSaltPaperParameters params = (SeaSaltPaperParameters) gs.getGameParameters();
-        SSPGameStateContainer gsContainer = new SSPGameStateContainer(gs);
-        String fileName = "ssp-" + gs.getGameID() + "-" + gs.getRoundCounter() + "-" + gs.getTurnCounter() + ".json";
-        String fileDir = params.dataPath + "/gameStates/";
-        try (FileWriter f = new FileWriter(fileDir + fileName)) {
-            Json.prettyWriter().writeValue(f, gsContainer);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 

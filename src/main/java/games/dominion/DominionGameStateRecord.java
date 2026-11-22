@@ -1,7 +1,7 @@
 package games.dominion;
 
 import core.AbstractGameState;
-import core.AbstractGameStateContainer;
+import core.AbstractGameStateRecord;
 import core.components.Deck;
 import core.components.PartialObservableDeck;
 import games.dominion.cards.CardType;
@@ -10,7 +10,7 @@ import games.dominion.cards.DominionCard;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DominionGameStateContainer extends AbstractGameStateContainer {
+public class DominionGameStateRecord extends AbstractGameStateRecord {
     Map<CardType, Integer> cardsIncludedInGame;
     // Then Decks for each player - Hand, Discard and Draw
     PartialObservableDeck<DominionCard>[] playerHands;
@@ -20,7 +20,7 @@ public class DominionGameStateContainer extends AbstractGameStateContainer {
     // Trash pile and other global decks
     Deck<DominionCard> trashPile;
     boolean[] defenceStatus;
-    public DominionGameStateContainer(DominionGameState gs) {
+    public DominionGameStateRecord(DominionGameState gs) {
         super(gs);
         cardsIncludedInGame = gs.cardsIncludedInGame;
         playerHands = gs.playerHands;

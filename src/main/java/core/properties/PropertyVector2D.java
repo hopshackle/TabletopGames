@@ -9,6 +9,10 @@ public class PropertyVector2D extends Property
 {
     public Vector2D values;
 
+    @SuppressWarnings("unused") // for JSON
+    private PropertyVector2D() {
+    }
+
     public PropertyVector2D(String hashString, JSONArray values)
     {
         super(hashString);

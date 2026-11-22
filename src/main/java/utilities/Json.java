@@ -5,11 +5,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerBuilder;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.deser.ValueInstantiator;
+import com.fasterxml.jackson.databind.deser.std.DelegatingDeserializer;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.module.SimpleSerializers;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -17,6 +20,8 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+
+import core.components.Component;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -46,7 +51,11 @@ import java.util.function.Supplier;
  * Reading fills a {@code HashSet} or {@code HashMap} field with a {@code LinkedHashSet} or {@code LinkedHashMap},
  * so that iterating over what was read (enum keys, say) does not change from one JVM launch to the next.
  * Reading ignores unknown properties and rejects text after the first JSON value; records and
- * {@code @JsonCreator} constructors work as usual.
+ * {@code @JsonCreator} constructors work as usual. Where a class declares a {@code "class"} type id and a
+ * document has none, the declared type is used.
+ * <p>
+ * {@link #stateReader(Map)} reads game states: a component that appears in several places in the document
+ * (the same {@code componentID}) is read once and shared, as it was in the state that was written.
  * <p>
  * The returned mapper is shared: do not reconfigure it. Use {@code mapper().copy()} for a variant.
  */
@@ -65,7 +74,7 @@ public final class Json {
     private Json() {
     }
 
-    private static ObjectMapper build() {
+    private static JsonMapper build() {
         SimpleModule module = new SimpleModule("TAG conventions");
         module.setSerializers(new SimpleSerializers() {
             @Override
@@ -89,21 +98,29 @@ public final class Json {
                 checkNoShadowedFields(beanDesc.getBeanClass());
                 return builder;
             }
+
+            @Override
+            public JsonDeserializer<?> modifyDeserializer(DeserializationConfig config, BeanDescription beanDesc,
+                                                          JsonDeserializer<?> deserializer) {
+                return Component.class.isAssignableFrom(beanDesc.getBeanClass())
+                        ? new SharedComponents(deserializer) : deserializer;
+            }
         });
         module.addValueInstantiator(HashSet.class, instantiator(HashSet.class, LinkedHashSet::new));
         module.addValueInstantiator(HashMap.class, instantiator(HashMap.class, LinkedHashMap::new));
-        ObjectMapper mapper = new ObjectMapper()
-                .setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE)
-                .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
-                .setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.ANY)
-                .setDefaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+        return JsonMapper.builder()
+                .visibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE)
+                .visibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
+                .visibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.ANY)
+                .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+                .enable(MapperFeature.USE_BASE_TYPE_AS_DEFAULT_IMPL)
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .configure(DeserializationFeature.FAIL_ON_TRAILING_TOKENS, true)
                 .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                 .configure(SerializationFeature.FAIL_ON_ORDER_MAP_BY_INCOMPARABLE_KEY, false)
-                .registerModule(module);
-        return mapper;
+                .addModule(module)
+                .build();
     }
 
     private static ValueInstantiator instantiator(Class<?> type, Supplier<Object> create) {
@@ -156,6 +173,41 @@ public final class Json {
 
     public static ObjectMapper mapper() {
         return MAPPER;
+    }
+
+    private static final String SHARED_COMPONENTS = "TAG.sharedComponents";
+
+    /**
+     * A reader for game states that shares components by {@code componentID}: the first component read with
+     * a given ID is the one used wherever that ID appears again.
+     *
+     * @param components components already known, by ID; components read are added to it. Pass a new map to
+     *                   start from none, and read the IDs from it afterwards.
+     */
+    public static ObjectReader stateReader(Map<Integer, Component> components) {
+        return MAPPER.reader().withAttribute(SHARED_COMPONENTS, components);
+    }
+
+    /** Wraps the deserializer of a component class, to return the component already read with the same ID. */
+    private static class SharedComponents extends DelegatingDeserializer {
+        SharedComponents(JsonDeserializer<?> delegate) {
+            super(delegate);
+        }
+
+        @Override
+        protected JsonDeserializer<?> newDelegatingInstance(JsonDeserializer<?> newDelegatee) {
+            return new SharedComponents(newDelegatee);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            Object value = _delegatee.deserialize(p, ctxt);
+            Map<Integer, Component> components = (Map<Integer, Component>) ctxt.getAttribute(SHARED_COMPONENTS);
+            if (components == null || !(value instanceof Component component)) return value;
+            Component known = components.putIfAbsent(component.getComponentID(), component);
+            return known != null ? known : component;
+        }
     }
 
     /** Writer that indents its output. */

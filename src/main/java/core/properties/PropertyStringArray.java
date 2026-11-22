@@ -8,6 +8,10 @@ public class PropertyStringArray extends Property
 {
     private String[] values;
 
+    @SuppressWarnings("unused") // for JSON
+    private PropertyStringArray() {
+    }
+
     public PropertyStringArray(String hashString, JSONArray values)
     {
         super(hashString);

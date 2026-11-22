@@ -1,13 +1,13 @@
 package games.uno;
 
 import core.AbstractGameState;
-import core.AbstractGameStateContainer;
+import core.AbstractGameStateRecord;
 import core.components.Deck;
 import games.uno.cards.UnoCard;
 
 import java.util.List;
 
-public class UnoGameStateContainer extends AbstractGameStateContainer {
+public class UnoGameStateRecord extends AbstractGameStateRecord {
     List<Deck<UnoCard>> playerDecks;
     Deck<UnoCard> drawDeck;
     Deck<UnoCard> discardDeck;
@@ -19,7 +19,7 @@ public class UnoGameStateContainer extends AbstractGameStateContainer {
     // Turn order data
     boolean skipTurn;
     int direction;
-    public UnoGameStateContainer(UnoGameState gs) {
+    public UnoGameStateRecord(UnoGameState gs) {
         super(gs);
         playerDecks = gs.playerDecks;
         drawDeck = gs.drawDeck;

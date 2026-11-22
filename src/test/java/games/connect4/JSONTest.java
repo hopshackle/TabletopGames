@@ -4,16 +4,27 @@ import core.CoreConstants;
 import core.actions.AbstractAction;
 import core.actions.SetGridValueAction;
 import games.GameType;
-import org.json.simple.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import core.AbstractGameState;
+import core.AbstractGameStateRecord;
+import evaluation.records.GameStateRecordFactory;
+import evaluation.records.SavedStates;
+import org.junit.Rule;
 import org.junit.Test;
-import utilities.JSONUtils;
+import org.junit.rules.TemporaryFolder;
+import utilities.Json;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 
 import static org.junit.Assert.*;
 
+/** A Connect4 state is saved as its {@link Connect4GameStateRecord} and loaded back unchanged. */
 public class JSONTest {
+
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
 
     private Connect4ForwardModel fm = new Connect4ForwardModel();
 
@@ -46,28 +57,25 @@ public class JSONTest {
         state.setTurnOwner(0);
         state.setGameStatus(CoreConstants.GameResult.GAME_ONGOING);
 
-        JSONObject json = state.toJSON();
+        JsonNode json = SavedStates.toJson(state);
+        assertEquals(Connect4GameStateRecord.class.getName(), json.get("class").asText());
+        assertEquals("Connect4", json.get("gameType").asText());
+        assertEquals(1, json.get("firstPlayer").asInt());
+        assertEquals(0, json.get("turnOwner").asInt());
+        assertEquals(params.width, json.get("gridBoard").get("width").asInt());
+        assertEquals(params.height, json.get("gridBoard").get("height").asInt());
 
-        // The shared AbstractGameState fields are nested under "abstractGameState"
-        assertTrue(json.containsKey("abstractGameState"));
-        JSONObject abstractGS = (JSONObject) json.get("abstractGameState");
-        assertEquals(1L, ((Number) abstractGS.get("firstPlayer")).longValue());
-        assertEquals(0L, ((Number) abstractGS.get("turnOwner")).longValue());
-
-        // Connect4-specific board fields
-        assertEquals(params.width, ((Number) json.get("width")).intValue());
-        assertEquals(params.height, ((Number) json.get("height")).intValue());
-
-        // Load it back into a freshly set up state, as the GUI's load path does
+        // Restore into a freshly set up state, as the loader does
         Connect4GameState newState = (Connect4GameState) GameType.Connect4.createGameState(params, 2);
         fm.setup(newState);
-        Connect4StateJSON.loadFromJSON(newState, json);
+        AbstractGameStateRecord.read(json.toString()).restore(newState);
 
         assertEquals(state.getFirstPlayer(), newState.getFirstPlayer());
         assertEquals(state.getTurnOwner(), newState.getTurnOwner());
         assertEquals(state.getGameStatus(), newState.getGameStatus());
         assertEquals(state.getGameTick(), newState.getGameTick());
         assertEquals(state.getGridBoard(), newState.getGridBoard());
+        assertEquals(state, newState);
     }
 
     @Test
@@ -76,20 +84,13 @@ public class JSONTest {
         Connect4GameState state = playGame(params, 3, 3, 4, 2, 5, 1);
         state.setGameStatus(CoreConstants.GameResult.GAME_ONGOING);
 
-        JSONObject json = state.toJSON();
-        File file = File.createTempFile("connect4State", ".json");
-        JSONUtils.writeJSON(json, file.getPath());
-
-        // Reload from the parsed-from-file JSON (exercises Long/Integer parsing quirks), via the
-        // reflective dispatcher the Frontend uses
-        JSONObject fromFile = JSONUtils.loadJSONFile(file.getPath());
-        Connect4GameState loadedState = JSONUtils.loadClassFromJSON(fromFile);
+        File file = tmp.newFile("connect4State.json");
+        Files.writeString(file.toPath(), GameStateRecordFactory.createRecord(state).toJson());
+        AbstractGameState loadedState = SavedStates.load(file);
 
         assertEquals(state, loadedState);
         // identity of the board (componentID) and every cell must survive the round-trip
-        assertEquals(state.getGridBoard().getComponentID(), loadedState.getGridBoard().getComponentID());
-
-        file.delete();
+        assertEquals(state.getGridBoard().getComponentID(), ((Connect4GameState) loadedState).getGridBoard().getComponentID());
     }
 
     @Test
@@ -102,18 +103,14 @@ public class JSONTest {
 
         Connect4GameState state = playGame(params, 0, 1, 0, 1);
 
-        JSONObject json = state.toJSON();
-        File file = File.createTempFile("connect4Params", ".json");
-        JSONUtils.writeJSON(json, file.getPath());
-
-        Connect4GameState loadedState = JSONUtils.loadClassFromJSON(JSONUtils.loadJSONFile(file.getPath()));
+        File file = tmp.newFile("connect4Params.json");
+        Files.writeString(file.toPath(), Json.prettyWriter().writeValueAsString(SavedStates.toJson(state)));
+        AbstractGameState loadedState = SavedStates.load(file);
         Connect4GameParameters loadedParams = (Connect4GameParameters) loadedState.getGameParameters();
 
         assertEquals(8, loadedParams.width);
         assertEquals(7, loadedParams.height);
         assertEquals(5, loadedParams.winCount);
         assertEquals(state, loadedState);
-
-        file.delete();
     }
 }

@@ -1,5 +1,7 @@
 package gui;
 
+import evaluation.listeners.GameStateSnapshotter;
+import evaluation.records.SavedStates;
 import games.GameType;
 import utilities.Utils;
 
@@ -19,11 +21,12 @@ import java.util.regex.Pattern;
  * <p>
  * The input directory (e.g. {@code .../Player_A_10}) is expected to contain:
  * <ul>
- *   <li>{@code SavedStates/<gameType>/G<GameID>/P<PlayerID>_Tick<Tick>.json} - the saved states to render;</li>
+ *   <li>{@code SavedStates/<gameType>/G<GameID>.jsonl} - each game's saved states (see {@link SavedStates}); the
+ *   positions saved before a flagged action (trigger {@code ACTION}) are rendered;</li>
  *   <li>{@code <prefix>Adviser.txt} - one tab-separated row per saved state, linked by (PlayerID, GameID, Tick);</li>
  *   <li>{@code ACTION_CHOSEN.csv} - comma-separated action log covering all ticks (not just saved states).</li>
  * </ul>
- * For each saved state this writes, alongside the JSON file, a {@code P<PlayerID>_Tick<Tick>.png} render
+ * For each such position this writes, into the game's {@code G<GameID>} directory, a {@code P<PlayerID>_Tick<Tick>.png} render
  * (via {@link StateRenderer#renderToImage}) annotated with the agent's and adviser's chosen actions taken
  * from the Adviser file. For each game it also writes, into that game's {@code G<GameID>} directory, a copy
  * of the Adviser file and a copy of the ACTION_CHOSEN file filtered to that game's rows.
@@ -38,10 +41,8 @@ import java.util.regex.Pattern;
  */
 public class AnnotatedScreenshotGenerator {
 
-    // P<PlayerID>_Tick<Tick>.json
-    private static final Pattern STATE_FILE = Pattern.compile("P(\\d+)_Tick(\\d+)\\.json", Pattern.CASE_INSENSITIVE);
-    // G<GameID> directory
-    private static final Pattern GAME_DIR = Pattern.compile("G(\\d+)");
+    // G<GameID>.jsonl: a game's saved states
+    private static final Pattern GAME_FILE = Pattern.compile("G(\\d+)\\.jsonl");
 
     // Column indices in <prefix>Adviser.txt (tab-separated)
     private static final int ADV_PLAYER_ID = 0, ADV_AGENT_ACTION = 2, ADV_AGENT_VALUE = 3,
@@ -89,34 +90,34 @@ public class AnnotatedScreenshotGenerator {
             System.out.println("Warning: no *Adviser.txt found in " + input + " - PNGs will not be annotated.");
         }
 
-        // 2. Walk the saved states, render (+annotate) each one, and collect the games seen.
-        File[] gameDirs = savedStatesRoot.listFiles(File::isDirectory);
-        if (gameDirs == null) gameDirs = new File[0];
+        // 2. Walk each game's saved states, render (+annotate) each flagged position, and collect the games seen.
+        File[] gameFiles = savedStatesRoot.listFiles((d, n) -> GAME_FILE.matcher(n).matches());
+        if (gameFiles == null) gameFiles = new File[0];
         Map<String, File> gameDirById = new HashMap<>();
         int rendered = 0, total = 0;
-        for (File gameDir : gameDirs) {
-            Matcher gm = GAME_DIR.matcher(gameDir.getName());
+        for (File gameFile : gameFiles) {
+            Matcher gm = GAME_FILE.matcher(gameFile.getName());
             if (!gm.matches()) continue;
             String gameId = gm.group(1);
+            File gameDir = new File(savedStatesRoot, "G" + gameId);
+            if (!gameDir.isDirectory() && !gameDir.mkdirs())
+                throw new AssertionError("Could not create " + gameDir);
             gameDirById.put(gameId, gameDir);
 
-            File[] jsons = gameDir.listFiles((d, n) -> STATE_FILE.matcher(n).matches());
-            if (jsons == null) continue;
-            for (File json : jsons) {
+            for (SavedStates.Entry entry : SavedStates.entries(gameFile)) {
+                if (!GameStateSnapshotter.ACTION_TRIGGER.equals(entry.trigger())) continue;
                 total++;
-                Matcher sm = STATE_FILE.matcher(json.getName());
-                if (!sm.matches()) continue;
-                String playerId = sm.group(1);
-                String tick = sm.group(2);
+                String playerId = String.valueOf(entry.player());
+                String tick = String.valueOf(entry.tick());
+                String name = "P" + playerId + "_Tick" + tick;
                 try {
-                    BufferedImage img = StateRenderer.renderToImage(gameType, json, fullPanel);
+                    BufferedImage img = StateRenderer.renderToImage(gameType, entry.toState(), fullPanel);
                     String[] adv = adviserRows.get(key(playerId, gameId, tick));
                     if (annotate && adv != null) img = annotate(img, adv);
-                    File png = new File(gameDir, stripExtension(json.getName()) + ".png");
-                    ImageIO.write(img, "png", png);
+                    ImageIO.write(img, "png", new File(gameDir, name + ".png"));
                     rendered++;
                 } catch (Exception e) {
-                    System.err.println("Failed to render " + json.getName() + " : " + e.getMessage());
+                    System.err.println("Failed to render " + name + " of " + gameFile.getName() + " : " + e.getMessage());
                 }
             }
         }
@@ -210,8 +211,4 @@ public class AnnotatedScreenshotGenerator {
         }
     }
 
-    private static String stripExtension(String name) {
-        int dot = name.lastIndexOf('.');
-        return dot == -1 ? name : name.substring(0, dot);
-    }
 }

@@ -246,6 +246,22 @@ public abstract class AbstractGameState {
     void setGameID(int id) {
         gameID = id;
     } // package level deliberately
+
+    /** Sets the fields every game has from a record; see {@link AbstractGameStateRecord#restore}. */
+    void restoreCoreFields(AbstractGameStateRecord record) {
+        gameID = record.gameID;
+        tick = record.tick;
+        roundCounter = record.roundCounter;
+        turnCounter = record.turnCounter;
+        turnOwner = record.turnOwner;
+        firstPlayer = record.firstPlayer;
+        nTeams = record.nTeams;
+        gameStatus = record.gameStatus;
+        playerResults = record.playerResults.clone();
+        gamePhase = record.phase();
+        actionsInProgress.clear();
+        if (record.actionsInProgress != null) record.actionsInProgress.forEach(actionsInProgress::push);
+    }
     void advanceGameTick() {tick++;}
 
     public void setTurnOwner(int newTurnOwner) {turnOwner = newTurnOwner;}

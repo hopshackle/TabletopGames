@@ -36,6 +36,11 @@ public class Deck<T extends Component> extends Component implements IComponentCo
     protected List<T> components;  // List of components in this deck
     protected VisibilityMode visibility;
 
+    @SuppressWarnings("unused") // for JSON
+    protected Deck() {
+        super();
+    }
+
     public Deck(String name, VisibilityMode visibility) {
         this(name, -1, visibility);
     }

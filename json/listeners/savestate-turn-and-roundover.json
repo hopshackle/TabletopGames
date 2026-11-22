@@ -1,5 +1,5 @@
 {
-  "class": "evaluation.listeners.SaveStateListener",
+  "class": "evaluation.listeners.GameStateSnapshotter",
   "args": [
     [
       "ROUND_OVER",

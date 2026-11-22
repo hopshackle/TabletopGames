@@ -8,10 +8,7 @@ import core.components.GridBoard;
 import core.components.Token;
 import core.interfaces.IGridGameState;
 import core.interfaces.IPrintable;
-import core.interfaces.IToJSON;
-import evaluation.optimisation.TunableParameters;
 import games.GameType;
-import org.json.simple.JSONObject;
 import utilities.Pair;
 
 import java.util.ArrayList;
@@ -19,7 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-public class Connect4GameState extends AbstractGameState implements IPrintable, IGridGameState, IToJSON {
+public class Connect4GameState extends AbstractGameState implements IPrintable, IGridGameState {
 
     GridBoard gridBoard;
     LinkedList<Pair<Integer, Integer>> winnerCells;
@@ -28,22 +25,6 @@ public class Connect4GameState extends AbstractGameState implements IPrintable, 
         super(gameParameters, nPlayers);
         winnerCells = new LinkedList<>();
         gridBoard = null;
-    }
-
-    public Connect4GameState(JSONObject jsonObject) {
-        // We start from default parameters and the recorded number of players, then overwrite the
-        // parameters and board from the JSON. This mirrors the Backgammon (BGGameState) pattern;
-        // the parameters must be set before setup(), as the board dimensions are read from them.
-        this(new Connect4GameParameters(),
-                ((Number) (((JSONObject) jsonObject.get("abstractGameState")).get("nPlayers"))).intValue());
-        JSONObject abstractGameStateJSON = (JSONObject) jsonObject.get("abstractGameState");
-        JSONObject gameParamsJSON = (JSONObject) abstractGameStateJSON.get("gameParams");
-        if (gameParamsJSON != null) {
-            this.gameParameters = TunableParameters.loadFromJSON(new Connect4GameParameters(), gameParamsJSON);
-        }
-        reset();
-        new Connect4ForwardModel().setup(this);
-        Connect4StateJSON.loadFromJSON(this, jsonObject);
     }
 
     /**
@@ -142,10 +123,5 @@ public class Connect4GameState extends AbstractGameState implements IPrintable, 
 
     public LinkedList<Pair<Integer, Integer>> getWinningCells() {
         return winnerCells;
-    }
-
-    @Override
-    public JSONObject toJSON() {
-        return Connect4StateJSON.toJSON(this);
     }
 }
