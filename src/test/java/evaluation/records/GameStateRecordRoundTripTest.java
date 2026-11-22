@@ -68,7 +68,7 @@ public class GameStateRecordRoundTripTest {
         AbstractGameState original = game.getGameState();
         AbstractGameState restored = roundTrip(original);
         String where = gameType + " after " + moves + " moves (seed " + seed + ")";
-        assertEquals(where, original, restored);
+        assertEquals(where + ": fields differ " + differences(original, restored), original, restored);
 
         AbstractForwardModel fm = game.getForwardModel();
         original.getRnd().setSeed(seed);
@@ -80,8 +80,32 @@ public class GameStateRecordRoundTripTest {
             AbstractAction chosen = actions.get(choice.nextInt(actions.size()));
             fm.next(original, chosen.copy());
             fm.next(restored, chosen.copy());
-            assertEquals(where + ", step " + step + ": state", original, restored);
+            assertEquals(where + ", step " + step + ": fields differ " + differences(original, restored), original, restored);
         }
+    }
+
+    // AbstractGameState fields that equals() deliberately leaves out
+    private static final Set<String> NOT_COMPARED = Set.of("allComponents", "history", "historyText", "playerTimer",
+            "rnd", "redeterminisationRnd", "listeners");
+
+    /** The names of the state's fields whose values differ, to explain a failed comparison. */
+    static List<String> differences(Object a, Object b) {
+        List<String> result = new ArrayList<>();
+        for (Class<?> c = a.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) continue;
+                if (NOT_COMPARED.contains(f.getName())) continue;
+                try {
+                    f.setAccessible(true);
+                    if (!Objects.deepEquals(f.get(a), f.get(b)))
+                        result.add(c.getSimpleName() + "." + f.getName() + (f.get(a) instanceof Collection<?> col
+                                ? " " + col.stream().map(x -> x.getClass().getSimpleName()).toList() : ""));
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    result.add(c.getSimpleName() + "." + f.getName() + " (" + e.getClass().getSimpleName() + ")");
+                }
+            }
+        }
+        return result;
     }
 
     @Test
