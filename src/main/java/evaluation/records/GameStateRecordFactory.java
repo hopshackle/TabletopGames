@@ -4,6 +4,11 @@ import core.AbstractGameState;
 import core.AbstractGameStateRecord;
 import games.GameType;
 
+import games.backgammon.BGGameState;
+import games.backgammon.BGGameStateRecord;
+import games.explodingkittens.ExplodingKittensGameState;
+import games.explodingkittens.ExplodingKittensGameStateRecord;
+
 import games.cantstop.CantStopGameState;
 import games.cantstop.CantStopGameStateRecord;
 import games.catan.CatanGameState;
@@ -45,6 +50,9 @@ public class GameStateRecordFactory {
         recordFactories.put(GameType.SeaSaltPaper, gs -> new SSPGameStateRecord((SeaSaltPaperGameState) gs));
         recordFactories.put(GameType.Uno, gs -> new UnoGameStateRecord((UnoGameState) gs));
         recordFactories.put(GameType.Wonders7, gs -> new Wonders7GameStateRecord((Wonders7GameState) gs));
+        recordFactories.put(GameType.Backgammon, gs -> new BGGameStateRecord((BGGameState) gs));
+        recordFactories.put(GameType.XIIScripta, gs -> new BGGameStateRecord((BGGameState) gs));
+        recordFactories.put(GameType.ExplodingKittens, gs -> new ExplodingKittensGameStateRecord((ExplodingKittensGameState) gs));
     }
 
     /**
