@@ -74,6 +74,20 @@ public class Tokenizer {
         return tokenize(obj, "", true, "both", true, false, false, false, filterSet, whitelist);
     }
 
+    /**
+     * Tokenizes an object after the structuring pass ({@link JsonStructurer}), with the defaults of
+     * {@link #tokenize(Object)}: tokens name what a component is and who owns it rather than where it is kept.
+     */
+    public static Map<String, Integer> tokenizeStructured(Object obj, Set<String> filterSet, boolean whitelist) {
+        JsonNode tree = obj instanceof JsonNode node ? node : Json.toTree(obj);
+        return tokenize(JsonStructurer.structure(tree), "", true, "both", true, false, false, false, filterSet, whitelist);
+    }
+
+    /** Tokenizes a game state through its record after the structuring pass; see {@link JsonStructurer}. */
+    public static Map<String, Integer> tokenizeStructured(AbstractGameState gs, Set<String> filterSet, boolean whitelist) {
+        return tokenizeStructured(GameStateRecordFactory.createRecord(gs), filterSet, whitelist);
+    }
+
     public static Map<String, Integer> tokenize(AbstractGameState gs) {
         AbstractGameStateRecord gsRecord = GameStateRecordFactory.createRecord(gs);
         return Tokenizer.tokenize(gsRecord);

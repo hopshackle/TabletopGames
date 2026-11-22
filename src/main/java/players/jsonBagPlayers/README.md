@@ -178,6 +178,28 @@ The full signature is `Tokenizer.tokenize(obj, prefix, ordered, mode, numSuffixF
 
 The convenience overloads use `mode=both`, `numSuffixFrequency=true`, no binning, no pairing and no filter. They differ in one respect: `tokenize(Object)` and `tokenize(AbstractGameState)` pass `ordered=true`, which is the path the heuristic and the player take, while `tokenize(String json)` passes `ordered=false` and so emits only the unindexed form at the top level.
 
+### Identity keys
+
+Component IDs come from a counter shared by every game in the JVM, so they would make bags from different games disagree for no reason. Keys that hold them are never tokenized: `ownerId`, `@id`, and any key ending in `ID` or `IDs` (`componentID`, `gameID`, `cardID`, `edgeIDs`). Name a record field that holds component IDs that way, and a field that holds a seat something else (`owner`, `player`). Loading a prototype or feature list that contains such a token fails, as it was ranked over IDs and must be regenerated.
+
+### The structuring pass
+
+`Tokenizer.tokenizeStructured(state, filterSet, whitelist)` rewrites the JSON before tokenizing it, using only the conventions every record follows (`JsonStructurer`):
+
+- every deck, wherever it is, moves to a top-level `decks` object under its name (seat numbers removed) and owner, with its cards grouped by name, so `.decks.Player deck[owner=1].Copper.cost.0` means the same thing in every game; a deck keeps its size, not its order or visibility;
+- other components stay where they are, with their class's simple name under `kind`;
+- a field ending in `ID` that refers to a component in the document becomes that component's name (`lastPlayedID: 13` becomes `lastPlayed: Gold`).
+
+JSON without components tokenizes exactly as without the pass. Whether the pass helps is an open question: compare it with plain tokenisation in the experiments (`structured=true`), using prototypes built with the pass.
+
+### Bags from saved games
+
+`TrajectoryBags` turns a game's saved states (the `.jsonl` files written by `GameStateSnapshotter`) into bags made exactly as the player makes them, one JSON line per state, for building prototypes and feature lists:
+
+```bash
+java -cp target/TAG.jar evaluation.jsonBag.TrajectoryBags input=<dir-or-file> output=bags.jsonl structured=false
+```
+
 ## Running the experiments
 
 `core.TAG` dispatches to the driver, which lives in `evaluation/jsonBag/`:
@@ -187,7 +209,7 @@ java -jar target/TAG.jar JSONBagValueFunctionExperiments game=DotsAndBoxes n=1 n
      experimentRootPath=Experiments/valueFuncTest2/DotsAndBoxes
 ```
 
-Arguments: `game` (`GameType` name, default `Dominion`), `n` (games per seed, default 100), `nPlayers` (default 4), `topK` (default 500), `includeNone` (default false), `experimentRootPath` (default `Experiments/valueFuncTest2/<game>`).
+Arguments: `game` (`GameType` name, default `Dominion`), `n` (games per seed, default 100), `nPlayers` (default 4), `topK` (default 500), `includeNone` (default false), `structured` (default false: tokenize after the structuring pass, which needs prototypes built the same way), `experimentRootPath` (default `Experiments/valueFuncTest2/<game>`).
 
 The root holds one folder per prototype set and one per feature selection; the driver walks every subfolder and uses each as both roles:
 

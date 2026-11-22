@@ -33,12 +33,24 @@ public class JSONBagHeuristic implements IStateHeuristic {
     }
 
 
+    // Whether states are tokenized after the structuring pass (see JsonStructurer); the prototypes must have been
+    // built the same way
+    boolean structured = false;
+
+    public void setStructured(boolean structured) {
+        this.structured = structured;
+    }
+
+    private Map<String, Integer> tokenize(AbstractGameState gs) {
+        return structured ? Tokenizer.tokenizeStructured(gs, filterSet, true) : Tokenizer.tokenize(gs, filterSet, true);
+    }
+
     public void setFilterSet(Collection<String> filterSet_) {
         filterSet = Set.copyOf(filterSet_);
     }
 
     public void updateJSONBag(AbstractGameState gs) {
-        Map<String, Integer> tokenizedGameState = Tokenizer.tokenize(gs, filterSet, true);
+        Map<String, Integer> tokenizedGameState = tokenize(gs);
 //        Tokenizer.filter(tokenizedGameState, filterSet,true);
         Tokenizer.merge(currentJSONBag, tokenizedGameState);
     }
@@ -58,7 +70,7 @@ public class JSONBagHeuristic implements IStateHeuristic {
         if (gs.getPlayerResults()[playerId] == CoreConstants.GameResult.WIN_GAME)
             return 1.0;
         Map<String, Integer> newJSONBag = new HashMap<>(currentJSONBag);
-        Map<String, Integer> newGameStateTokenized = Tokenizer.tokenize(gs, filterSet, true);
+        Map<String, Integer> newGameStateTokenized = tokenize(gs);
 //        Tokenizer.filter(newGameStateTokenized, filterSet,true);
         Tokenizer.merge(newJSONBag, newGameStateTokenized);
 
@@ -135,6 +147,7 @@ public class JSONBagHeuristic implements IStateHeuristic {
     public JSONBagHeuristic copy() {
         JSONBagHeuristic copy = new JSONBagHeuristic(prototypes, new ArrayList<>(filterSet));
         copy.currentJSONBag = new HashMap<>(currentJSONBag);
+        copy.structured = structured;
         return copy;
     }
 
