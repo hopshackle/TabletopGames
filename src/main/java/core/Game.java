@@ -820,7 +820,7 @@ public class Game {
         int topKFeatures = 100;
         String filterListPath = topFeaturesFolderPath + "features-top" + topKFeatures + ".json";
         System.out.println("READING TOP FEATURES FROM " + filterListPath);
-        List<String> topFeaturesFilterList = Tokenizer.loadStringList(filterListPath);
+        List<String> topFeaturesFilterList = Tokenizer.loadFeatureList(filterListPath);
 
         Set<String> topFeaturesFilterSet = new HashSet<>(topFeaturesFilterList);
         for (Map<String, Integer> prototype : prototypes) {

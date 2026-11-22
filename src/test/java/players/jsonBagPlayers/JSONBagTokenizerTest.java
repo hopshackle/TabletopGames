@@ -3,8 +3,12 @@ package players.jsonBagPlayers;
 import core.AbstractGameState;
 import games.GameType;
 import org.apache.commons.lang3.NotImplementedException;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -240,5 +244,38 @@ public class JSONBagTokenizerTest {
         assertFalse(paired.containsKey(".y.3"));
         assertTrue(unpaired.containsKey(".x.5"));
         assertTrue(unpaired.containsKey(".y.3"));
+    }
+
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
+
+    @Test
+    public void identityKeysAreNeverTokenized() {
+        Map<String, Integer> bag = Tokenizer.tokenize(
+                "{\"deck\":[{\"componentID\":41,\"ownerId\":1,\"@id\":3,\"name\":\"Copper\"}],\"componentID\":7}");
+        assertEquals(Set.of(".deck.name.Copper"), bag.keySet());
+    }
+
+    @Test
+    public void identityTokensAreRecognisedByPathSegment() {
+        assertTrue(Tokenizer.isIdentityToken(".deck[0].componentID.41"));
+        assertTrue(Tokenizer.isIdentityToken(".hand.ownerId"));
+        assertFalse(Tokenizer.isIdentityToken(".deck.componentName.Copper"));
+    }
+
+    @Test
+    public void aFeatureListWithIdentityTokensIsRefused() throws Exception {
+        File clean = tmp.newFile("clean.json");
+        Files.writeString(clean.toPath(), "[\".deck.name.Copper\"]");
+        assertEquals(List.of(".deck.name.Copper"), Tokenizer.loadFeatureList(clean.getPath()));
+
+        File polluted = tmp.newFile("polluted.json");
+        Files.writeString(polluted.toPath(), "[\".deck.name.Copper\", \".deck.componentID.41\"]");
+        try {
+            Tokenizer.loadFeatureList(polluted.getPath());
+            fail("a feature list ranked over component IDs must be refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains(".deck.componentID.41"));
+        }
     }
 }

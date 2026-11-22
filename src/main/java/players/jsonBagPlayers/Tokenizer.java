@@ -18,6 +18,22 @@ import java.util.*;
 public class Tokenizer {
 
     /**
+     * Keys whose values identify an object rather than describe it: component IDs, which come from a counter
+     * shared by every game in the JVM, the owner ID that travels with them, and Jackson object-identity ids.
+     * They are never tokenized, wherever they appear, since a bag pooled over many games would otherwise
+     * be dominated by IDs that no other game shares.
+     */
+    public static final Set<String> IDENTITY_KEYS = Set.of("componentID", "ownerId", "@id");
+
+    /** True if the token has an identity key as one of its path segments. */
+    public static boolean isIdentityToken(String token) {
+        for (String segment : token.split("[.\\[\\]]")) {
+            if (IDENTITY_KEYS.contains(segment)) return true;
+        }
+        return false;
+    }
+
+    /**
      * Tokenizes a JSON string using the default configuration.
      * Numeric atomic values are also counted under their base prefix when possible.
      */
@@ -182,6 +198,7 @@ public class Tokenizer {
             int pairX = -99, pairY = -99;
             for (Map.Entry<String, JsonNode> e : collection.properties()) {
                 String key = e.getKey();
+                if (IDENTITY_KEYS.contains(key)) continue;
                 String keyPrefix = prefix + "." + key;
                 JsonNode value = e.getValue();
                 if (isAtomic(value)) {
@@ -306,6 +323,7 @@ public class Tokenizer {
             try (FileReader reader = new FileReader(filePath)) {
                 Map<String, Integer> prototype = Json.mapper().readValue(reader, mapType);
                 if (prototype != null) {
+                    refuseIdentityTokens(prototype.keySet(), filePath);
                     prototypes.add(prototype);
                 } else {
                     System.err.println("Warning: prototype" + i + ".json was empty or invalid");
@@ -317,6 +335,25 @@ public class Tokenizer {
             }
         }
         return prototypes;
+    }
+
+    /**
+     * Loads a feature list (a JSON array of tokens, such as {@code features-top100.json}) to filter bags with.
+     *
+     * @throws IllegalArgumentException if the list holds an identity token (see {@link #IDENTITY_KEYS}): such a
+     *                                  list was ranked over component IDs and must be regenerated
+     */
+    public static List<String> loadFeatureList(String filePath) {
+        List<String> features = loadStringList(filePath);
+        refuseIdentityTokens(features, filePath);
+        return features;
+    }
+
+    private static void refuseIdentityTokens(Collection<String> tokens, String filePath) {
+        List<String> identity = tokens.stream().filter(Tokenizer::isIdentityToken).limit(5).toList();
+        if (!identity.isEmpty())
+            throw new IllegalArgumentException(filePath + " contains identity tokens such as " + identity
+                    + "; regenerate it from bags that exclude " + IDENTITY_KEYS);
     }
 
     /**
